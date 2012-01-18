@@ -1,6 +1,4 @@
-#ifndef _KNH_ON_T2K
 #include "../konoha_mpi.h"
-#endif
 
 /* ------------------------------------------------------------------------ */
 //## method boolean MPIComm.bcast(MPIData data, int count, int root_rank);

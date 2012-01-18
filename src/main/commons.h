@@ -27,6 +27,9 @@
 
 #ifndef COMMONS_H_
 #define COMMONS_H_
+
+#include "mpi.h"
+
 #define K_INTERNAL  1
 #include"../../include/konoha1.h"
 #include"../../include/konoha1/inlinelibs.h"

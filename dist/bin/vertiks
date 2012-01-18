@@ -1,0 +1,264 @@
+#!/usr/local/bin/mpikonoha
+
+using konoha.mpi.*;
+using konoha.sugar.*;
+
+/* ------------------------------------------------------------------------ */
+// System
+
+@Public void    System.p(dynamic d)         { OUT << d << EOL }
+@Public void    System.eexit(String msg)    { ERR << msg << EOL; exit(1) }
+@Public boolean System.fexist(String fpath) { return (boolean)(Path)fpath }
+@Public String  System.fload(String fpath)  { b = ""; for (l : new InputStream(fpath)) { b += l+"\n" } return b }
+
+/* ------------------------------------------------------------------------ */
+// Array
+
+@Public Array Array.query(Func<dynamic=>boolean> wh, Func<dynamic=>dynamic> sel) { ret = []; for (any : this) { if (wh(any)) { ret << sel(any) } } return ret }
+@Public Array Array.where(Func<dynamic=>boolean> wh)   { return this.query(wh, def(d){ return d }) }
+@Public Array Array.select(Func<dynamic=>dynamic> sel) { return this.query(def(d){ return true }, sel) }
+@Public void  Array.each(Func<dynamic> func)           { for (any : this) { func(any) } }
+
+/* ------------------------------------------------------------------------ */
+// Map
+
+@Public Map  Map.query(Func<dynamic=>boolean> wh, Func<dynamic=>dynamic>sel) { ret = {}; for (key : this.keys()) { any = this[key]; if (wh(any)) { ret[key] = sel(any) } } return ret }
+@Public Map  Map.where(Func<dynamic=>boolean> wh)   { return this.query(wh, def(d){ return d }) }
+@Public Map  Map.select(Func<dynamic=>dynamic> sel) { return this.query(def(d){ return true }, sel) }
+@Public void Map.each(Func<dynamic> func)           { for (key : this.keys()) { func(this[key]) } }
+
+/* ------------------------------------------------------------------------ */
+// Token @using konoha.sugar
+
+@Public String Token.rawText() {
+    return (this.type in? [Token.TEXT2, Token.STEXT]) ? `"`+this.text+`"` : this.text;
+}
+
+// only use for Token[]
+@Public String Array.tjoin() {
+    ret = "";
+    if (this instanceof Token[] && |this| > 0) {
+        ret = this[0].text;
+        if (|this| > 1) {
+            for (token : this[1 to]) { ret += " " + token.rawText() }
+        }
+    }
+    return ret;
+}
+
+// only use for Token[]
+@Public Token[] Array.tuntil(Func<Token=>boolean> condf) {
+    Token[] ret = [];
+    if (this instanceof Token[]) {
+        for (token : this) { if (condf(token)) { break } else { ret << token } }
+    }
+    return ret;
+}
+
+/* ------------------------------------------------------------------------ */
+// Options
+
+class Options {
+    Map<String,String> _optmap;
+    String[] keys()                      { return _optmap.keys() }
+    String   get(String key)             { return _optmap[key] }
+    void     set(String key, String val) { _optmap[key] = val }
+    boolean  has(String key)             { return key in? keys() }
+    boolean  setOpt(String key, String value) {
+        existed = key in? keys();
+        if (!existed) set(key, value);
+        return !existed;
+    }
+    String   getOpt(String key) {
+        return (key in? keys()) ? get(key) : "";
+    }
+
+    Options(String[] args) {
+        _optmap = {}
+        optkey = "";
+        for (arg : args) {
+            if (arg[0] == "-") {
+                /* set option key */
+                if (optkey != "") eexit("vertiks: option [-%s{#0}] has no value"(optkey));
+                optkey = arg.replace($/^-{1,2}/, "");
+                ret = true;
+                switch(optkey) {
+                case "direct": {
+                    ret = setOpt("direct", "enable");
+                    optkey = "";
+                    break;
+                }
+                }
+                if (!ret) eexit("vertiks: option [%s{#0}] is duplicated"(arg));
+            } else if (optkey != "") {
+                /* set option value */
+                ret = false;
+                val = arg;
+                switch(optkey) {
+                case "np":
+                case "n": {
+                    ret = setOpt("numprocs", val);
+                    break;
+                }
+                case "hostfile": {
+                    if (!fexist(val)) eexit("vertiks: hostfile not found");
+                    ret = setOpt("hostfile", val);
+                    break;
+                }
+                case "host": {
+                    ret = setOpt("host", val);
+                    break;
+                }
+                default:
+                    eexit("vertiks: illegal option [-%s{#0}]"(optkey));
+                }
+                if (!ret) eexit("vertiks: option [-%s{#0}] is duplicated"(optkey));
+                optkey = "";
+            } else {
+                /* set target file */
+                if (!setOpt("target", arg)) eexit("vertiks: multiple target files [%s{#0}, %s{#1}]"(getOpt("target"), arg));
+            }
+        }
+        if (!has("target")) eexit("vertiks: no target file");
+        if (!fexist(getOpt("target"))) eexit("vertiks: target file not found");
+    }
+}
+
+/* ------------------------------------------------------------------------ */
+// TaskFunc
+
+class TaskFunc(String fname, String param, String source) {
+    String id;
+    boolean tcheck(TaskScript ts, int np) {
+        ret = false;
+        return ret;
+    }
+}
+
+/* ------------------------------------------------------------------------ */
+// TaskProcFunc @depends TaskFunc, TaskScript
+
+class TaskProcFunc(TaskFunc tf) {
+    Map param;
+    void evalParam(TaskScript ts) {
+        tparam = tf.param;
+        if (|tparam| > 0) {
+            for (stt : tparam.split(",")) {
+                kv = stt.trim().convert(to:upper).split("=");
+                key = kv[0].trim();
+                value = kv[1].trim();
+                switch(key) {
+                case "size":
+                    ivalue = (int)value;
+                    if (ivalue > ts.numprocs) eexit("target task size is too much");
+                    _param[key] = ivalue;
+                    break;
+                case "rank":
+                    break;
+                default: break;
+                }
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------ */
+// TaskScript @depends TaskFunc, TaskProcFunc, Options, Token
+
+class TaskScript {
+    String target;
+    int numprocs;
+    Options options;
+    String script;
+    Map<String,TaskFunc[]> tfmap;
+
+    TaskScript(Options opts) {
+        _target  = opts.getOpt("target");
+        _numprocs = (int)opts.getOpt("numprocs");
+        _options = opts;
+        _script = "";
+        _tfmap  = {};
+    }
+
+    void exec() {
+        if (options.has("direct")) { // direct mpirun execution
+            arg_np    = (_numprocs > 1) ? "-np " + _numprocs : "";
+            arg_host  = options.has("host") ? "-host " + options.getOpt("host") : "";
+            arg_hfile = options.has("hostfile") ? "-hostfile " + options.getOpt("hostfile") : "";
+            cmd  = "mpirun %s{#0} %s{#1} %s{#2} mpikonoha %s{#3}"(arg_np, arg_host, arg_hfile, _target);
+            OUT << System.exec(cmd);
+            OUT.flush();
+            exit(0);
+        }
+        parse();
+        attach();
+        run();
+    }
+
+    String regist(TaskFunc tf) {
+        fname = tf.fname;
+        if (fname in? _tfmap == false) _tfmap[fname] = new TaskFunc[0];
+        tfary = (TaskFunc[])_tfmap[fname];
+        tfid = "task["+|tfary|+"]:"+fname;
+        tf.id = tfid;
+        tfary << tf;
+        return "/*%s{#0}*/"(tfid);
+    }
+
+    void parse() {
+        tokens = Lang.tokenize(fload(_target));
+
+        paramf = def(Token t) { return t.text == ")" }
+        argsf  = def(Token t) { return (t.text != "{" && t.type != Token.CODE) }
+        codef  = def(Token t) { return t.text == "}" }
+
+        for (int i = 0; i < |tokens|; i++) {
+            token = tokens[i];
+            if (token.type == Token.META && token.text == "@Task") {
+                fparam = "";
+                j = i;
+                if (tokens[++j].text == "(") {
+                    tpary = tokens[++j to -1].tuntil(paramf);
+                    fparam = tpary.tjoin();
+                    j += (|tpary| + 1);
+                }
+                fname = tokens[++j].text;
+                j += (|tokens[++j to -1].tuntil(argsf)| + 1);
+                fsrc = "";
+                if (tokens[++j].type == Token.CODE) { // this may be always true
+                    fsrc = Lang.tokenize(tokens[j].text).tjoin();
+                }
+                else { // ***
+                    tcary = tokens[++j to -1].tuntil(codef);
+                    fsrc = tcary.tjoin();
+                    j += (|tcary|);
+                }
+                tfunc = new TaskFunc(fname, fparam, fsrc);
+                _script += regist(tfunc);
+                i = j;
+            }
+            else {
+                _script += token.rawText();
+            }
+        }
+    }
+
+    void attach() {
+        tpfmap = {};
+        for (tfname : tfmap.keys()) {
+            tfary = tfmap[tfname];
+            tpfary = new TaskProcFunc[|tfary|];
+            for (int i = 0; i < |tfary|; i++) {
+                tpf = new TaskProcFunc(tfary[i]);
+                tpf.evalParam(this);
+                tpfary[i] = tpf;
+            }
+            tpfmap[tfname] = tpfary;
+        }
+    }
+
+    void run() { }
+
+}
+
+new TaskScript(new Options($script.argv)).exec();

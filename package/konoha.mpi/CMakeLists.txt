@@ -11,12 +11,12 @@ set(PACKAGE_SCRIPT_CODE mpi.k)
 set(PACKAGE_SOURCE_CODE
 		mpi.c
 		src/array.c
-		src/sys.c
 		src/coll.c
 		src/data.c
 		src/comm.c
 		src/op.c
 		src/pt2pt.c
+		src/general.c
 )
 set(KONOHA_PACKAGE_DIR konoha/package/${KONOHA_VERSION}/konoha.${PROJECT_NAME})
 
@@ -35,57 +35,51 @@ if(MPI_TYPE)
    endif()
 endif(MPI_TYPE)
 
-if(NOT MPI_ROOT_DIR)
-   # -- use default dirs
-   set(MPI_ROOT_DIR /usr/local)
-endif(NOT MPI_ROOT_DIR)
-
-set(MPI_INCDIR ${MPI_ROOT_DIR}/include)
-set(MPI_LIBDIR ${MPI_ROOT_DIR}/lib)
-
-find_library(HAVE_LIBMPICH mpich ${MPI_LIBDIR})
-find_library(HAVE_LIBMPI mpi ${MPI_LIBDIR})
+if(MPI_ROOT_DIR)
+  # -- use specified dirs
+  set(MPI_INCDIR ${MPI_ROOT_DIR}/include)
+  set(MPI_LIBDIR ${MPI_ROOT_DIR}/lib)
+  find_library(HAVE_LIBMPICH NAMES mpich PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
+  find_library(HAVE_LIBMPI NAMES mpi PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
+else()
+  find_library(HAVE_LIBMPICH mpich)
+  find_library(HAVE_LIBMPI mpi)
+endif(MPI_ROOT_DIR)
 
 if(MPI_TYPE_OMPI AND HAVE_LIBMPI)
    # -- OpenMPI
    set(MessageLibs ${MessageLibs} ompi PARENT_SCOPE)
-
    set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${KONOHA_INCLUDE_DIRS} ${MPI_INCDIR})
    include_directories(${INCLUDE_DIRS})
 
-   # --- LIBMPI (already checked by HAVE_LIBMPI)
    set(MPI_LIBS ${HAVE_LIBMPI})
 
 # endif MPI_TYPE_OMPI AND HAVE_LIBMPI
 elseif(MPI_TYPE_MPICH AND HAVE_LIBMPICH)
    # -- MPICH
    set(MessageLibs ${MessageLibs} mpich PARENT_SCOPE)
-
    set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${KONOHA_INCLUDE_DIRS} ${MPI_INCDIR})
    include_directories(${INCLUDE_DIRS})
 
-   # --- LIBMPICH (already checked by HAVE_LIBMPICH)
-   set(MPI_LIBS ${HAVE_LIBMPICH})
+   if (MPI_LIBDIR)
+     find_library(LIB_OPENPA NAMES opa PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
+     find_library(LIB_MPL NAMES mpl PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
+     find_library(LIB_PMPICH NAMES pmpich PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
+   else()
+     find_library(LIB_OPENPA opa)
+     find_library(LIB_MPL mpl ${MPI_LIBDIR})
+     find_library(LIB_PMPICH pmpich)
+   endif()
 
-   # --- LIBOPA
-   find_library(LIB_OPENPA opa  ${MPI_LIBDIR})
    if (NOT EXISTS ${LIB_OPENPA})
-      message(FATAL_ERROR "opa library not found.")
+     message(FATAL_ERROR "opa library not found.")
    endif(NOT EXISTS ${LIB_OPENPA})
-   set(MPI_LIBS ${MPI_LIBS} ${LIB_OPENPA})
 
-   # --- LIBMPL
-   find_library(LIB_MPL mpl  ${MPI_LIBDIR})
    if (NOT EXISTS ${LIB_MPL})
-      message(FATAL_ERROR "mpl library not found.")
+     message(FATAL_ERROR "mpl library not found.")
    endif(NOT EXISTS ${LIB_MPL})
-   set(MPI_LIBS ${MPI_LIBS} ${LIB_MPL})
 
-   # --- LIBPMPICH (optional)
-   find_library(LIB_PMPICH pmpich  ${MPI_LIBDIR})
-   if (LIB_PMPICH)
-      set(MPI_LIBS ${MPI_LIBS} ${LIB_PMPICH})
-   endif(LIB_PMPICH)
+   set(MPI_LIBS ${HAVE_LIBMPICH} ${LIB_OPENPA} ${LIB_MPL} ${LIB_PMPICH})
 
 # endif MPI_TYPE_MPICH AND HAVE_LIBMPICH
 endif(MPI_TYPE_OMPI AND HAVE_LIBMPI)

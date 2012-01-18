@@ -823,6 +823,39 @@ typedef struct {
 #define KNH_SYSTEM          (ctx->sys)
 #define knh_Object_sweep    knh_Object_RCsweep
 
+#include "mpi.h"
+#define KNH_ON_MPI
+
+typedef struct {
+	MPI_Comm         world;
+	const char      *script;
+	size_t           scriptsize;
+	struct kMPITask *next;
+} kMPITask;
+
+typedef struct {
+	kObjectHeader h;
+	MPI_Comm      comm;
+	int           myrank;
+	int           numprocs;
+	char         *proc_name;
+} kMPIComm;
+
+#define MPIC_COMM(c)      ((c)->comm)
+#define MPIC_RANK(c)      ((c)->myrank)
+#define MPIC_SIZE(c)      ((c)->numprocs)
+#define MPIC_PROC(d)      ((d)->proc_name)
+#define MPIC_init_rank(c) MPI_Comm_rank(MPIC_COMM(c), &MPIC_RANK(c))
+#define MPIC_init_size(c) MPI_Comm_size(MPIC_COMM(c), &MPIC_SIZE(c))
+#define MPIC(v, o)        kMPIComm *v = ((kMPIComm*)o)
+
+typedef struct {
+	kMPIComm          *world;
+	const char        *initscript;
+	size_t             initsiz;
+	struct kMPITask   *tasks;
+} kMPITaskContext;
+
 struct kStmtExpr;
 typedef void (*fMethod_compile)(CTX, struct kMethod *, struct kStmtExpr *);
 
@@ -838,6 +871,9 @@ typedef struct kshare_t {
 
 
 	kmutex_t              *syslock;
+
+	/* using mpi */
+	struct kMPITaskContext *mpictx;
 
 	/* system shared const */
 	struct kObject      *constNull;

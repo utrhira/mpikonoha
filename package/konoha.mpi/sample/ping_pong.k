@@ -27,10 +27,10 @@ void main (String[] args)
 
 /* Timer accuracy test */
 
-    t0 = getMPIWtime();
-    t1 = getMPIWtime();
+    t0 = MPI.getWtime();
+    t1 = MPI.getWtime();
 
-    while (t1 == t0) t1 = getMPIWtime();
+    while (t1 == t0) t1 = MPI.getWtime();
 
     if (myproc == 0)
         OUT.println("Timer accuracy of ~"+((t1 - t0) * 1000000)+" usecs\n");
@@ -50,7 +50,7 @@ void main (String[] args)
         last = size / 8 - 1;
 
         world.barrier();
-        t0 = getMPIWtime();
+        t0 = MPI.getWtime();
         if (myproc == 0) {
 
             world.send((MPIData)a, size/8, other_proc);
@@ -66,7 +66,7 @@ void main (String[] args)
             world.send((MPIData)b, size/8, other_proc);
 
         }
-        t1 = getMPIWtime();
+        t1 = MPI.getWtime();
         time = 1.e6 * (t1 - t0);
         world.barrier();
 
@@ -103,7 +103,7 @@ void main (String[] args)
 
         request = world.iRecv((MPIData)b, size/8, other_proc);
         world.barrier();
-        t0 = getMPIWtime();
+        t0 = MPI.getWtime();
 
         if (myproc == 0) {
 
@@ -121,7 +121,7 @@ void main (String[] args)
             world.send((MPIData)b, size/8, other_proc);
         }
 
-        t1 = getMPIWtime();
+        t1 = MPI.getWtime();
 
         time = 1.e6 * (t1 - t0);
         world.barrier();
@@ -161,7 +161,7 @@ void main (String[] args)
 
         world.barrier();
 
-        t0 = getMPIWtime();
+        t0 = MPI.getWtime();
 
         world.send((MPIData)a, size/8, other_proc);
         request_b.wait();
@@ -173,7 +173,7 @@ void main (String[] args)
         world.send((MPIData)b, size/8, other_proc);
         request_a.wait();
 
-        t1 = getMPIWtime();
+        t1 = MPI.getWtime();
         time = 1.e6 * (t1 - t0);
         world.barrier();
 

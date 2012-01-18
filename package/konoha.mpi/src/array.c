@@ -1,9 +1,5 @@
-#ifndef _KNH_ON_T2K
 #include "../konoha_mpi.h"
 #include <konoha1/konohalang.h>
-#else
-#include "../../konoha1/konohalang.h"
-#endif
 
 #define ArrayMNFunc(X) {MN_##X , __Array_##X}
 

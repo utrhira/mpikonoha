@@ -49,12 +49,12 @@ void main(String[] args) {
 
     /* Start of mat-vec routine ----------------------------*/
     world.barrier();
-    t1 = getMPIWtime();
+    t1 = MPI.getWtime();
 
     MyMatMat(c, a, b, N);
 
     world.barrier();
-    t2 = getMPIWtime();
+    t2 = MPI.getWtime();
     t0 =  t2 - t1;
     t_w = new float[1];
     world.reduce((MPIData)[t0], (MPIData)t_w, 1, MPIOp.MAX, 0);

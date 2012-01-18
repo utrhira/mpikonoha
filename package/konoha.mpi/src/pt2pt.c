@@ -1,6 +1,4 @@
-#ifndef _KNH_ON_T2K
 #include "../konoha_mpi.h"
-#endif
 
 /* ------------------------------------------------------------------------ */
 //## method int MPIComm.send(MPIData sdata, int count, int dest, int tag);

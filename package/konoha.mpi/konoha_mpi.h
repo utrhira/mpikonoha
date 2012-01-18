@@ -1,14 +1,9 @@
-#ifndef _KNH_ON_T2K
+
 #ifndef KNH_INCLUDE_MPI
 #define KNH_INCLUDE_MPI
 #define K_INTERNAL
 #include <konoha1.h>
 #include <konoha1/inlinelibs.h>
-#endif /* _KNH_ON_T2K */
-
-/**
- * @T2K include/konoha1/konoha_class.h
- */
 
 #include <mpi.h>
 
@@ -26,6 +21,8 @@
 
 //## class MPIComm Object;
 
+#ifndef KNH_ON_MPI
+
 typedef struct {
 	kObjectHeader h;
 	MPI_Comm comm;
@@ -39,6 +36,8 @@ typedef struct {
 #define MPIC_SIZE(c) ((c)->numprocs)
 #define MPIC_PROC(d) ((d)->proc_name)
 #define MPIC(v, o) kMPIComm *v = ((kMPIComm*)o)
+
+#endif
 
 /* ------------------------------------------------------------------------ */
 /* MPI Data */
@@ -123,6 +122,4 @@ typedef struct {
 #define KNH_MPI_OP_IS_NULL(op) (MPIO_OP(op) == 0)
 #define MPIO(v, op) kMPIOp *v = (kMPIOp*)op
 
-#ifndef _KNH_ON_T2K
 #endif /* KNH_INCLUDE_MPI */
-#endif
