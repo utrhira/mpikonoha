@@ -411,7 +411,7 @@ else()
        set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 endif()
 include_directories(${MPI_C_INCLUDE_PATH})
-target_link_libraries(konoha ${MPI_C_LIBRARIES})
+set(ExtraLibs ${ExtraLibs} ${MPI_C_LIBRARIES})
 	      
 add_library(konoha SHARED ${KONOHA_SRC})
 target_link_libraries(konoha ${ExtraLibs})
