@@ -6,10 +6,11 @@ using konoha.sugar.*;
 /* ------------------------------------------------------------------------ */
 // System
 
-@Public void    System.p(dynamic d)         { OUT << d << EOL }
-@Public void    System.eexit(String msg)    { ERR << msg << EOL; exit(1) }
-@Public boolean System.fexist(String fpath) { return (boolean)(Path)fpath }
-@Public String  System.fload(String fpath)  { b = ""; for (l : new InputStream(fpath)) { b += l+"\n" } return b }
+@Public void    System.p(dynamic d)                { OUT << d << EOL }
+@Public void    System.todo(String msg, dynamic d) { OUT << msg << d << EOL }
+@Public void    System.eexit(String msg)           { ERR << "failed to launch: " << msg << EOL; exit(1) }
+@Public boolean System.fexist(String fpath)        { return (boolean)(Path)fpath }
+@Public String  System.fload(String fpath)         { b = ""; for (l : new InputStream(fpath)) { b += l+"\n" } return b }
 
 /* ------------------------------------------------------------------------ */
 // Array
@@ -79,7 +80,7 @@ class Options {
         for (arg : args) {
             if (arg[0] == "-") {
                 /* set option key */
-                if (optkey != "") eexit("vertiks: option [-%s{#0}] has no value"(optkey));
+                if (optkey != "") eexit("option [-%s{#0}] has no value"(optkey));
                 optkey = arg.replace($/^-{1,2}/, "");
                 ret = true;
                 switch(optkey) {
@@ -89,7 +90,7 @@ class Options {
                     break;
                 }
                 }
-                if (!ret) eexit("vertiks: option [%s{#0}] is duplicated"(arg));
+                if (!ret) eexit("option [%s{#0}] is duplicated"(arg));
             } else if (optkey != "") {
                 /* set option value */
                 ret = false;
@@ -101,7 +102,7 @@ class Options {
                     break;
                 }
                 case "hostfile": {
-                    if (!fexist(val)) eexit("vertiks: hostfile not found");
+                    if (!fexist(val)) eexit("hostfile not found");
                     ret = setOpt("hostfile", val);
                     break;
                 }
@@ -110,17 +111,17 @@ class Options {
                     break;
                 }
                 default:
-                    eexit("vertiks: illegal option [-%s{#0}]"(optkey));
+                    eexit("illegal option [-%s{#0}]"(optkey));
                 }
-                if (!ret) eexit("vertiks: option [-%s{#0}] is duplicated"(optkey));
+                if (!ret) eexit("option [-%s{#0}] is duplicated"(optkey));
                 optkey = "";
             } else {
                 /* set target file */
-                if (!setOpt("target", arg)) eexit("vertiks: multiple target files [%s{#0}, %s{#1}]"(getOpt("target"), arg));
+                if (!setOpt("target", arg)) eexit("multiple target files [%s{#0}, %s{#1}]"(getOpt("target"), arg));
             }
         }
-        if (!has("target")) eexit("vertiks: no target file");
-        if (!fexist(getOpt("target"))) eexit("vertiks: target file not found");
+        if (!has("target")) eexit("no target file");
+        if (!fexist(getOpt("target"))) eexit("target file not found");
     }
 }
 
@@ -131,6 +132,7 @@ class TaskFunc(String fname, String param, String source) {
     String id;
     boolean tcheck(TaskScript ts, int np) {
         ret = false;
+        todo("TaskFunc.tcheck", this);
         return ret;
     }
 }
@@ -138,13 +140,20 @@ class TaskFunc(String fname, String param, String source) {
 /* ------------------------------------------------------------------------ */
 // TaskProcFunc @depends TaskFunc, TaskScript
 
-class TaskProcFunc(TaskFunc tf) {
+class TaskProcFunc {
+    TaskFunc tfunc;
     Map param;
+    int[] ranks;
+    TaskProcFunc(TaskFunc tf) {
+        _tfunc = tf;
+        _param = {};
+        _ranks = [];
+    }
     void evalParam(TaskScript ts) {
-        tparam = tf.param;
+        tparam = tfunc.param;
         if (|tparam| > 0) {
             for (stt : tparam.split(",")) {
-                kv = stt.trim().convert(to:upper).split("=");
+                kv = stt.trim().convert(to:lower).split("=");
                 key = kv[0].trim();
                 value = kv[1].trim();
                 switch(key) {
@@ -154,11 +163,22 @@ class TaskProcFunc(TaskFunc tf) {
                     _param[key] = ivalue;
                     break;
                 case "rank":
+                    ivalue = (int)value;
+                    if (ivalue > ts.numprocs) eexit("specified rank over");
+                    _param[key] = ivalue;
+                    _ranks << ivalue;
+                    break;
+                case "out":
+                case "err":
+                    print value;
                     break;
                 default: break;
                 }
             }
         }
+    }
+    int getSize() {
+        return ("size" in? _param) ? _param["size"] : 1;
     }
 }
 
@@ -171,6 +191,7 @@ class TaskScript {
     Options options;
     String script;
     Map<String,TaskFunc[]> tfmap;
+    Map<String,TaskProcFunc[]> tpfmap;
 
     TaskScript(Options opts) {
         _target  = opts.getOpt("target");
@@ -178,6 +199,7 @@ class TaskScript {
         _options = opts;
         _script = "";
         _tfmap  = {};
+        _tpfmap = {};
     }
 
     void exec() {
@@ -244,8 +266,7 @@ class TaskScript {
     }
 
     void attach() {
-        tpfmap = {};
-        for (tfname : tfmap.keys()) {
+        for (tfname : _tfmap.keys()) {
             tfary = tfmap[tfname];
             tpfary = new TaskProcFunc[|tfary|];
             for (int i = 0; i < |tfary|; i++) {
@@ -253,12 +274,54 @@ class TaskScript {
                 tpf.evalParam(this);
                 tpfary[i] = tpf;
             }
-            tpfmap[tfname] = tpfary;
+            _tpfmap[tfname] = tpfary;
         }
     }
 
-    void run() { }
+    void run() {
+        for (tpfname : _tpfmap.keys()) {
+            tpfary = (TaskProcFunc[])_tpfmap[tpfname];
+            len = |tpfary|;
+            pflags = new boolean[_numprocs];
+            rflags = new boolean[len];
+            tpsize = 0;
+            for (int i = 0; i < len; i++) {
+                tpf = tpfary[i];
+                for (r : tpf.ranks) {
+                    if (pflags[r]) eexit("specified rank duplicated in [%s{#0}"(tpfname));
+                    pflags[r] = true;
+                    rflags[i] = true;
+                }
+            }
+            for (int i = 0; i < len; i++) {
+                tpf = tpfary[i];
+                if (rflags[i]) {
+                    tpsize += tpf.size;
+                    continue;
+                }
+                if (tpsize + tpf.size > _numprocs) eexit("specified functions size in [%s{#0}]"(tpfname));
+                tpranks = new int[0];
+                for (int i = 0; i < tpf.size; i++) {
+                    tpranks << tpsize + i;
+                }
+                tpranks.reshape([|tpranks|]);
+                tpf.ranks = tpranks;
+                tpsize += tpf.size;
+            }
+            for (int i = 0; i < len; i++) {
+                tpf = tpfary[i];
+                print tpf.tfunc.id, tpf.ranks;
+            }
+            print "---";
+        }
+    }
 
 }
 
-new TaskScript(new Options($script.argv)).exec();
+int main(String[] args)
+{
+    opts = new Options(args);
+    task = new TaskScript(opts);
+    task.exec();
+    return 0;
+}
