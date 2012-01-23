@@ -3,14 +3,27 @@
 using konoha.mpi.*;
 using konoha.sugar.*;
 
+VERTIKS_HELP = ```
+usage>
+    $ vertiks [options] target
+    target  : target task script for mpikonoha
+    options :
+          -np N                    -> number of mpikonoha procs
+          -hostfile /path/to/file  -> mpirun hostfile path
+          -host host0,host1        -> hostnames separated by comma
+          --direct                 -> direct mpirun for non-task script
+          --help                   -> show this help
+```;
+
 /* ------------------------------------------------------------------------ */
 // System
 
 @Public void    System.p(dynamic d)               { OUT << d << EOL }
 @Public void    System.e(dynamic d)               { ERR << d << EOL }
-@Public void    System.x(String s)                { e("failed to launch: "+ s); exit(1) }
+@Public void    System.x(int i, String s)         { if (i == 0) { p(s) } else { e(s) } exit(i) }
 @Public void    System.todo(String s, dynamic d)  { OUT << "TODO: " + s; p(d) }
-@Public void    System.eexit(boolean b, String s) { if (!b) x(s) }
+@Public void    System.einfo(String s)            { x(0, s) }
+@Public void    System.eexit(boolean b, String s) { if (!b) x(1, "failed to launch: "+ s) }
 @Public boolean System.fexist(Path p)             { return (boolean)p }
 @Public String  System.fload(Path p)              { b = ""; for (l : new InputStream(p)) { b += l+"\n" } return b }
 
@@ -35,22 +48,20 @@ class Options {
                 optkey = arg.replace($/^-{1,2}/, "");
                 ret = true;
                 switch(optkey) {
-                case "direct": optkey = ""; ret = setOpt("direct", "enable"); break;
-                default:                                                      break;
+                case "n" :
+                case "np" :
+                case "numprocs" :  optkey = "numprocs"; break;
+                case "hostfile" :  break;
+                case "host" :      break;
+                case "direct":     optkey = ""; ret = setOpt("direct", "enable"); break;
+                case "help":       optkey = ""; einfo(VERTIKS_HELP);
+                default:           eexit(false, "illegal option [-%s{#0}]"(optkey));
                 }
                 eexit(ret, "option [%s{#0}] is duplicated"(arg));
             }
             else if (optkey != "") {
                 /* set option value */
-                ret = false;
-                switch(optkey) {
-                case "np":
-                case "n":                                                  ret = setOpt("numprocs", arg); break;
-                case "hostfile": eexit(fexist(arg), "hostfile not found"); ret = setOpt("hostfile", arg); break;
-                case "host":                                               ret = setOpt("host", arg);     break;
-                default:         x("illegal option [-%s{#0}]"(optkey));
-                }
-                eexit(ret, "option [-%s{#0}] is duplicated"(optkey));
+                eexit(setOpt(optkey, arg), "option [-%s{#0}] is duplicated"(optkey));
                 optkey = "";
             }
             else {
@@ -58,7 +69,9 @@ class Options {
                 eexit(setOpt("target", arg), "multiple target files [%s{#0}, %s{#1}]"(getOpt("target"), arg));
             }
         }
-        eexit(has("target"), "no target file");
+        eexit(optkey == "", "option [-%s{#0}] has no value"(optkey));
+        eexit(has("target"), "no target (use '--help' for help)");
+        eexit(!has("hostfile") || fexist(getOpt("hostfile")), "hostfile not found");
         eexit(fexist(getOpt("target")), "target file not found");
     }
 }
