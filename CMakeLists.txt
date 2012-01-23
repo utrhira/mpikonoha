@@ -384,35 +384,17 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake
 #
 # mpikonoha configuration
 # --> require MPI module
+# ----> use -DMPI_BASE_DIR=/path/to/mpibase for specifying target lib.
 #
-if (MPI_ROOT_DIR)
-       if (NOT MPI_TYPE)
-	       message(FATAL_ERROR "MPI_TYPE=[ompi/mpich] definition is required")
-       endif()
-       if ("${MPI_TYPE}" STREQUAL "mpich")
-	       find_library(HAVE_MPILIB NAMES mpich opa mpl PATHS ${MPI_ROOT_DIR}/lib NO_DEFAULT_PATH)
-	       find_library(HAVE_LIBPMPICH NAMES pmpich PATHS ${MPI_ROOT_DIR}/lib NO_DEFAULT_PATH)
-	       set(HAVE_MPILIB ${HAVE_MPILIB} ${HAVE_LIBPMPICH})
-       elseif("${MPI_TYPE}" STREQUAL "ompi")
-	       find_library(HAVE_MPILIB NAMES mpi PATHS ${MPI_ROOT_DIR}/lib NO_DEFAULT_PATH)
-       endif()
-       if (NOT EXISTS ${HAVE_MPILIB})
-	       message(FATAL_ERROR "MPI Library NOT FOUND:" ${MPI_ROOT_DIR}/lib NO_DEFAULT_PATH)
-       endif()
-       set(MPI_C_INCLUDE_PATH	${MPI_ROOT_DIR}/include)
-       set(MPI_CXX_INCLUDE_PATH ${MPI_ROOT_DIR}/include)
-       set(MPI_C_LIBRARIES   ${HAVE_MPILIB})
-       set(MPI_CXX_LIBRARIES ${HAVE_MPILIB})
-else()
-       find_package(MPI REQUIRED)
-       set(CMAKE_C_COMPILE_FLAGS   ${CMAKE_C_COMPILE_FLAGS}   ${MPI_COMPILE_FLAGS})
-       set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS}) 
-       set(CMAKE_C_LINK_FLAGS	${CMAKE_C_LINK_FLAGS}	${MPI_LINK_FLAGS})
-       set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
-endif()
-include_directories(${MPI_C_INCLUDE_PATH})
-set(ExtraLibs ${ExtraLibs} ${MPI_C_LIBRARIES})
-	      
+find_package(MPI REQUIRED)
+set(CMAKE_C_COMPILE_FLAGS   ${CMAKE_C_COMPILE_FLAGS}   ${MPI_COMPILE_FLAGS})
+set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS}) 
+set(CMAKE_C_LINK_FLAGS	${CMAKE_C_LINK_FLAGS}    ${MPI_LINK_FLAGS})
+set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
+include_directories(${MPI_INCLUDE_PATH})
+set(ExtraLibs ${ExtraLibs} ${MPI_LIBRARIES})
+#
+
 add_library(konoha SHARED ${KONOHA_SRC})
 target_link_libraries(konoha ${ExtraLibs})
 set_target_properties(konoha PROPERTIES VERSION ${PACKAGE_VERSION} SOVERSION ${SO_VERSION})

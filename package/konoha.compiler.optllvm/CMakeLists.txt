@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.6)
 set(CMAKE_BUILD_TYPE ${KONOHA_BUILD_TYPE})
 
 find_program(LLVM_CONFIG NAMES llvm-config DOC "llvm-config")
+
+if(0)
+  
 if(LLVM_CONFIG)
 
 project(compiler.optllvm)
@@ -69,3 +72,5 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${PACKAGE_SCRIPT_CODE} DESTINATION ${K
 
 endif()
 endif(LLVM_CONFIG)
+
+endif(0)

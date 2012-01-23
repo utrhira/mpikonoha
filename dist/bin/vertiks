@@ -6,27 +6,62 @@ using konoha.sugar.*;
 /* ------------------------------------------------------------------------ */
 // System
 
-@Public void    System.p(dynamic d)                { OUT << d << EOL }
-@Public void    System.todo(String msg, dynamic d) { OUT << msg << d << EOL }
-@Public void    System.eexit(String msg)           { ERR << "failed to launch: " << msg << EOL; exit(1) }
-@Public boolean System.fexist(String fpath)        { return (boolean)(Path)fpath }
-@Public String  System.fload(String fpath)         { b = ""; for (l : new InputStream(fpath)) { b += l+"\n" } return b }
+@Public void    System.p(dynamic d)               { OUT << d << EOL }
+@Public void    System.e(dynamic d)               { ERR << d << EOL }
+@Public void    System.x(String s)                { e("failed to launch: "+ s); exit(1) }
+@Public void    System.todo(String s, dynamic d)  { OUT << "TODO: " + s; p(d) }
+@Public void    System.eexit(boolean b, String s) { if (!b) x(s) }
+@Public boolean System.fexist(Path p)             { return (boolean)p }
+@Public String  System.fload(Path p)              { b = ""; for (l : new InputStream(p)) { b += l+"\n" } return b }
 
 /* ------------------------------------------------------------------------ */
-// Array
+// Options
 
-@Public Array Array.query(Func<dynamic=>boolean> wh, Func<dynamic=>dynamic> sel) { ret = []; for (any : this) { if (wh(any)) { ret << sel(any) } } return ret }
-@Public Array Array.where(Func<dynamic=>boolean> wh)   { return this.query(wh, def(d){ return d }) }
-@Public Array Array.select(Func<dynamic=>dynamic> sel) { return this.query(def(d){ return true }, sel) }
-@Public void  Array.each(Func<dynamic> func)           { for (any : this) { func(any) } }
-
-/* ------------------------------------------------------------------------ */
-// Map
-
-@Public Map  Map.query(Func<dynamic=>boolean> wh, Func<dynamic=>dynamic>sel) { ret = {}; for (key : this.keys()) { any = this[key]; if (wh(any)) { ret[key] = sel(any) } } return ret }
-@Public Map  Map.where(Func<dynamic=>boolean> wh)   { return this.query(wh, def(d){ return d }) }
-@Public Map  Map.select(Func<dynamic=>dynamic> sel) { return this.query(def(d){ return true }, sel) }
-@Public void Map.each(Func<dynamic> func)           { for (key : this.keys()) { func(this[key]) } }
+class Options {
+    Map<String,String> _optmap;
+    String[] keys()                           { return _optmap.keys() }
+    boolean  has(String key)                  { return key in? keys() }
+    String   get(String key)                  { return _optmap[key] }
+    boolean  set(String key, String val)      { _optmap[key] = val; return true }
+    String   getOpt(String key)               { return (key in? keys()) ? get(key) : "" }
+    boolean  setOpt(String key, String value) { return (key in? keys()) ? false : set(key, value) }
+    Options(String[] args) {
+        _optmap = {}
+        optkey = "";
+        for (arg : args) {
+            if (arg[0] == "-") {
+                /* set option key or single option */
+                eexit(optkey == "", "option [-%s{#0}] has no value"(optkey));
+                optkey = arg.replace($/^-{1,2}/, "");
+                ret = true;
+                switch(optkey) {
+                case "direct": optkey = ""; ret = setOpt("direct", "enable"); break;
+                default:                                                      break;
+                }
+                eexit(ret, "option [%s{#0}] is duplicated"(arg));
+            }
+            else if (optkey != "") {
+                /* set option value */
+                ret = false;
+                switch(optkey) {
+                case "np":
+                case "n":                                                  ret = setOpt("numprocs", arg); break;
+                case "hostfile": eexit(fexist(arg), "hostfile not found"); ret = setOpt("hostfile", arg); break;
+                case "host":                                               ret = setOpt("host", arg);     break;
+                default:         x("illegal option [-%s{#0}]"(optkey));
+                }
+                eexit(ret, "option [-%s{#0}] is duplicated"(optkey));
+                optkey = "";
+            }
+            else {
+                /* set target file */
+                eexit(setOpt("target", arg), "multiple target files [%s{#0}, %s{#1}]"(getOpt("target"), arg));
+            }
+        }
+        eexit(has("target"), "no target file");
+        eexit(fexist(getOpt("target")), "target file not found");
+    }
+}
 
 /* ------------------------------------------------------------------------ */
 // Token @using konoha.sugar
@@ -54,75 +89,6 @@ using konoha.sugar.*;
         for (token : this) { if (condf(token)) { break } else { ret << token } }
     }
     return ret;
-}
-
-/* ------------------------------------------------------------------------ */
-// Options
-
-class Options {
-    Map<String,String> _optmap;
-    String[] keys()                      { return _optmap.keys() }
-    String   get(String key)             { return _optmap[key] }
-    void     set(String key, String val) { _optmap[key] = val }
-    boolean  has(String key)             { return key in? keys() }
-    boolean  setOpt(String key, String value) {
-        existed = key in? keys();
-        if (!existed) set(key, value);
-        return !existed;
-    }
-    String   getOpt(String key) {
-        return (key in? keys()) ? get(key) : "";
-    }
-
-    Options(String[] args) {
-        _optmap = {}
-        optkey = "";
-        for (arg : args) {
-            if (arg[0] == "-") {
-                /* set option key */
-                if (optkey != "") eexit("option [-%s{#0}] has no value"(optkey));
-                optkey = arg.replace($/^-{1,2}/, "");
-                ret = true;
-                switch(optkey) {
-                case "direct": {
-                    ret = setOpt("direct", "enable");
-                    optkey = "";
-                    break;
-                }
-                }
-                if (!ret) eexit("option [%s{#0}] is duplicated"(arg));
-            } else if (optkey != "") {
-                /* set option value */
-                ret = false;
-                val = arg;
-                switch(optkey) {
-                case "np":
-                case "n": {
-                    ret = setOpt("numprocs", val);
-                    break;
-                }
-                case "hostfile": {
-                    if (!fexist(val)) eexit("hostfile not found");
-                    ret = setOpt("hostfile", val);
-                    break;
-                }
-                case "host": {
-                    ret = setOpt("host", val);
-                    break;
-                }
-                default:
-                    eexit("illegal option [-%s{#0}]"(optkey));
-                }
-                if (!ret) eexit("option [-%s{#0}] is duplicated"(optkey));
-                optkey = "";
-            } else {
-                /* set target file */
-                if (!setOpt("target", arg)) eexit("multiple target files [%s{#0}, %s{#1}]"(getOpt("target"), arg));
-            }
-        }
-        if (!has("target")) eexit("no target file");
-        if (!fexist(getOpt("target"))) eexit("target file not found");
-    }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -159,12 +125,12 @@ class TaskProcFunc {
                 switch(key) {
                 case "size":
                     ivalue = (int)value;
-                    if (ivalue > ts.numprocs) eexit("target task size is too much");
+                    eexit(ivalue <= ts.numprocs, "target task size is too much");
                     _param[key] = ivalue;
                     break;
                 case "rank":
                     ivalue = (int)value;
-                    if (ivalue > ts.numprocs) eexit("specified rank over");
+                    eexit(ivalue <= ts.numprocs, "specified rank over");
                     _param[key] = ivalue;
                     _ranks << ivalue;
                     break;
@@ -279,7 +245,10 @@ class TaskScript {
     }
 
     void run() {
-        for (tpfname : _tpfmap.keys()) {
+        keys = _tpfmap.keys();
+        klen = |keys|;
+        for (int i = 0; i < klen; i++) {
+            tpfname = keys[i];
             tpfary = (TaskProcFunc[])_tpfmap[tpfname];
             len = |tpfary|;
             pflags = new boolean[_numprocs];
@@ -288,7 +257,7 @@ class TaskScript {
             for (int i = 0; i < len; i++) {
                 tpf = tpfary[i];
                 for (r : tpf.ranks) {
-                    if (pflags[r]) eexit("specified rank duplicated in [%s{#0}"(tpfname));
+                    eexit(!pflags[r], "specified rank duplicated in [%s{#0}"(tpfname));
                     pflags[r] = true;
                     rflags[i] = true;
                 }
@@ -299,7 +268,7 @@ class TaskScript {
                     tpsize += tpf.size;
                     continue;
                 }
-                if (tpsize + tpf.size > _numprocs) eexit("specified functions size in [%s{#0}]"(tpfname));
+                eexit(tpsize + tpf.size <= _numprocs, "specified functions size in [%s{#0}]"(tpfname));
                 tpranks = new int[0];
                 for (int i = 0; i < tpf.size; i++) {
                     tpranks << tpsize + i;

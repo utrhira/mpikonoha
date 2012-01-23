@@ -21,81 +21,30 @@ set(PACKAGE_SOURCE_CODE
 set(KONOHA_PACKAGE_DIR konoha/package/${KONOHA_VERSION}/konoha.${PROJECT_NAME})
 
 # - check MPI library
+# --> require MPI module
+# ----> use -DMPI_BASE_DIR=/path/to/mpibase for specifying target lib.
+find_package(MPI REQUIRED)
+set(CMAKE_C_COMPILE_FLAGS   ${CMAKE_C_COMPILE_FLAGS}   ${MPI_COMPILE_FLAGS})
+set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS}) 
+set(CMAKE_C_LINK_FLAGS	    ${CMAKE_C_LINK_FLAGS}      ${MPI_LINK_FLAGS})
+set(CMAKE_CXX_LINK_FLAGS    ${CMAKE_CXX_LINK_FLAGS}    ${MPI_LINK_FLAGS})
 
-set(MPI_TYPE_OMPI "on")
-set(MPI_TYPE_MPICH "on")
+if(MPI_LIBRARIES)
 
-if(MPI_TYPE)
-   if("${MPI_TYPE}" STREQUAL "mpich")
-     # -- disable ompi
-     set(MPI_TYPE_OMPI)
-   elseif("${MPI_TYPE}" STREQUAL "ompi")
-     # -- disable mpich
-     set(MPI_TYPE_MPICH)
-   endif()
-endif(MPI_TYPE)
-
-if(MPI_ROOT_DIR)
-  # -- use specified dirs
-  set(MPI_INCDIR ${MPI_ROOT_DIR}/include)
-  set(MPI_LIBDIR ${MPI_ROOT_DIR}/lib)
-  find_library(HAVE_LIBMPICH NAMES mpich PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
-  find_library(HAVE_LIBMPI NAMES mpi PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
-else()
-  find_library(HAVE_LIBMPICH mpich)
-  find_library(HAVE_LIBMPI mpi)
-endif(MPI_ROOT_DIR)
-
-if(MPI_TYPE_OMPI AND HAVE_LIBMPI)
-   # -- OpenMPI
-   set(MessageLibs ${MessageLibs} ompi PARENT_SCOPE)
-   set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${KONOHA_INCLUDE_DIRS} ${MPI_INCDIR})
-   include_directories(${INCLUDE_DIRS})
-
-   set(MPI_LIBS ${HAVE_LIBMPI})
-
-# endif MPI_TYPE_OMPI AND HAVE_LIBMPI
-elseif(MPI_TYPE_MPICH AND HAVE_LIBMPICH)
-   # -- MPICH
-   set(MessageLibs ${MessageLibs} mpich PARENT_SCOPE)
-   set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${KONOHA_INCLUDE_DIRS} ${MPI_INCDIR})
-   include_directories(${INCLUDE_DIRS})
-
-   if (MPI_LIBDIR)
-     find_library(LIB_OPENPA NAMES opa PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
-     find_library(LIB_MPL NAMES mpl PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
-     find_library(LIB_PMPICH NAMES pmpich PATHS ${MPI_LIBDIR} NO_DEFAULT_PATH)
-   else()
-     find_library(LIB_OPENPA opa)
-     find_library(LIB_MPL mpl ${MPI_LIBDIR})
-     find_library(LIB_PMPICH pmpich)
-   endif()
-
-   if (NOT EXISTS ${LIB_OPENPA})
-     message(FATAL_ERROR "opa library not found.")
-   endif(NOT EXISTS ${LIB_OPENPA})
-
-   if (NOT EXISTS ${LIB_MPL})
-     message(FATAL_ERROR "mpl library not found.")
-   endif(NOT EXISTS ${LIB_MPL})
-
-   set(MPI_LIBS ${HAVE_LIBMPICH} ${LIB_OPENPA} ${LIB_MPL} ${LIB_PMPICH})
-
-# endif MPI_TYPE_MPICH AND HAVE_LIBMPICH
-endif(MPI_TYPE_OMPI AND HAVE_LIBMPI)
-
-if(MPI_LIBS)
+  set(MessageLibs ${MessageLibs} mpi PARENT_SCOPE)
+   include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${KONOHA_INCLUDE_DIRS} ${MPI_INCLUDE_PATH})
+   
    # -- install mpikonoha binary
    add_executable(mpikonoha src/mpikonoha.c)
-   target_link_libraries(mpikonoha konoha ${MPI_LIBS})
+   target_link_libraries(mpikonoha konoha ${MPI_LIBRARIES})
    install(TARGETS mpikonoha RUNTIME DESTINATION bin)
 
    # -- install konoha.mpi package
    add_definitions(-D_SETUP)
    add_library(${PACKAGE_NAME} SHARED ${PACKAGE_SOURCE_CODE})
    set_target_properties(${PACKAGE_NAME} PROPERTIES PREFIX "")
-   target_link_libraries(${PACKAGE_NAME} konoha ${MPI_LIBS})
+   target_link_libraries(${PACKAGE_NAME} konoha ${MPI_LIBRARIES})
    install(TARGETS ${PACKAGE_NAME} DESTINATION ${KONOHA_PACKAGE_DIR})
    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${PACKAGE_SCRIPT_CODE} DESTINATION ${KONOHA_PACKAGE_DIR})
 
-endif(MPI_LIBS)
+endif(MPI_LIBRARIES)
