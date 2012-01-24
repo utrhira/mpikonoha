@@ -5,14 +5,14 @@ using konoha.sugar.*;
 
 VERTIKS_HELP = ```
 usage>
-    $ vertiks [options] target
-    target  : target task script for mpikonoha
-    options :
-          -np N                    -> number of mpikonoha procs
-          -hostfile /path/to/file  -> mpirun hostfile path
-          -host host0,host1        -> hostnames separated by comma
-          --direct                 -> direct mpirun for non-task script
-          --help                   -> show this help
+      $ vertiks [options] target
+      target  : target task script for mpikonoha
+      options :
+            -np N                    -> number of mpikonoha procs
+            -hostfile /path/to/file  -> mpirun hostfile path
+            -host host0,host1        -> hostnames separated by comma
+            --direct                 -> direct mpirun for non-task script
+            --help                   -> show this help
 ```;
 
 /* ------------------------------------------------------------------------ */
@@ -46,18 +46,25 @@ class Options {
                 /* set option key or single option */
                 eexit(optkey == "", "option [-%s{#0}] has no value"(optkey));
                 optkey = arg.replace($/^-{1,2}/, "");
-                ret = true;
                 switch(optkey) {
                 case "n" :
                 case "np" :
-                case "numprocs" :  optkey = "numprocs"; break;
-                case "hostfile" :  break;
-                case "host" :      break;
-                case "direct":     optkey = ""; ret = setOpt("direct", "enable"); break;
-                case "help":       optkey = ""; einfo(VERTIKS_HELP);
-                default:           eexit(false, "illegal option [-%s{#0}]"(optkey));
+                case "numprocs" :
+                    optkey = "numprocs";
+                    break;
+                case "hostfile" :
+                case "host" :
+                    break;
+                case "direct":
+                    optkey = "";
+                    setOpt("direct", "enable");
+                    break;
+                case "help":
+                    optkey = "";
+                    einfo(VERTIKS_HELP);
+                default:
+                    eexit(false, "illegal option [-%s{#0}]"(optkey));
                 }
-                eexit(ret, "option [%s{#0}] is duplicated"(arg));
             }
             else if (optkey != "") {
                 /* set option value */
@@ -80,17 +87,18 @@ class Options {
 // Token @using konoha.sugar
 
 @Public String Token.rawText() {
-    return (this.type in? [Token.TEXT2, Token.STEXT]) ? `"`+this.text+`"` : this.text;
+    return (this.type in? [Token.TEXT2, Token.STEXT]) ? `"`+this.text+`"` :
+           (this.type == Token.CODE) ? "{ "+this.text+" }" :
+           (this.text == ";" && this.type == Token.OPERATOR) ? this.text + "\n" : this.text;
+
 }
 
 // only use for Token[]
-@Public String Array.tjoin() {
+String : (Token[] ta) {
     ret = "";
-    if (this instanceof Token[] && |this| > 0) {
-        ret = this[0].text;
-        if (|this| > 1) {
-            for (token : this[1 to]) { ret += " " + token.rawText() }
-        }
+    if (|ta| > 0) {
+        ret = ta[0].text;
+        if (|ta| > 1) for (token : ta[1 to -1]) { ret += " " + token.rawText() }
     }
     return ret;
 }
@@ -104,65 +112,73 @@ class Options {
     return ret;
 }
 
-/* ------------------------------------------------------------------------ */
-// TaskFunc
-
-class TaskFunc(String fname, String param, String source) {
-    String id;
-    boolean tcheck(TaskScript ts, int np) {
-        ret = false;
-        todo("TaskFunc.tcheck", this);
-        return ret;
+// only use for int[]
+String : (Array<int> ia) {
+    ret = "";
+    if (|ia| > 0) {
+        ret = "%s"(ia[0]);
+        if (|ia| > 1) for (i : ia[1 to -1]) { ret += ", " + i }
     }
+    return ret;
 }
 
 /* ------------------------------------------------------------------------ */
-// TaskProcFunc @depends TaskFunc, TaskScript
+// TaskFunc
 
-class TaskProcFunc {
-    TaskFunc tfunc;
+class TaskFunc {
+    String name;
+    String sign;
+    String sparam;
+    String source;
     Map param;
     int[] ranks;
-    TaskProcFunc(TaskFunc tf) {
-        _tfunc = tf;
+    TaskFunc(String name, String sign, String param, String source) {
+        _name = name;
+        _sign = sign;
+        _sparam = param;
+        _source = source;
         _param = {};
         _ranks = [];
     }
     void evalParam(TaskScript ts) {
-        tparam = tfunc.param;
-        if (|tparam| > 0) {
-            for (stt : tparam.split(",")) {
+        if (|_sparam| > 0) {
+            for (stt : _sparam.split(",")) {
                 kv = stt.trim().convert(to:lower).split("=");
                 key = kv[0].trim();
                 value = kv[1].trim();
                 switch(key) {
-                case "size":
+                case "size" :
                     ivalue = (int)value;
                     eexit(ivalue <= ts.numprocs, "target task size is too much");
                     _param[key] = ivalue;
                     break;
-                case "rank":
+                case "rank" :
                     ivalue = (int)value;
                     eexit(ivalue <= ts.numprocs, "specified rank over");
                     _param[key] = ivalue;
                     _ranks << ivalue;
                     break;
-                case "out":
-                case "err":
-                    print value;
+                case "out" :
+                case "err" :
+                    _param[key] = value;
+                    todo("specified out/err of task", value);
                     break;
                 default: break;
                 }
             }
         }
     }
+    String getId() {
+        return "task:"+ this.hashCode() + "(%s{#0})"(_name);
+    }
     int getSize() {
-        return ("size" in? _param) ? _param["size"] : 1;
+        return ("size" in? _param) ? _param["size"] :
+               ("rank" in? _param) ? |_ranks| : 1;
     }
 }
 
 /* ------------------------------------------------------------------------ */
-// TaskScript @depends TaskFunc, TaskProcFunc, Options, Token
+// TaskScript @depends TaskFunc, Options, Token
 
 class TaskScript {
     String target;
@@ -170,7 +186,6 @@ class TaskScript {
     Options options;
     String script;
     Map<String,TaskFunc[]> tfmap;
-    Map<String,TaskProcFunc[]> tpfmap;
 
     TaskScript(Options opts) {
         _target  = opts.getOpt("target");
@@ -178,11 +193,11 @@ class TaskScript {
         _options = opts;
         _script = "";
         _tfmap  = {};
-        _tpfmap = {};
     }
 
     void exec() {
-        if (options.has("direct")) { // direct mpirun execution
+        if (options.has("direct")) {
+            /* direct mpirun execution */
             arg_np    = (_numprocs > 1) ? "-np " + _numprocs : "";
             arg_host  = options.has("host") ? "-host " + options.getOpt("host") : "";
             arg_hfile = options.has("hostfile") ? "-hostfile " + options.getOpt("hostfile") : "";
@@ -194,16 +209,6 @@ class TaskScript {
         parse();
         attach();
         run();
-    }
-
-    String regist(TaskFunc tf) {
-        fname = tf.fname;
-        if (fname in? _tfmap == false) _tfmap[fname] = new TaskFunc[0];
-        tfary = (TaskFunc[])_tfmap[fname];
-        tfid = "task["+|tfary|+"]:"+fname;
-        tf.id = tfid;
-        tfary << tf;
-        return "/*%s{#0}*/"(tfid);
     }
 
     void parse() {
@@ -220,22 +225,34 @@ class TaskScript {
                 j = i;
                 if (tokens[++j].text == "(") {
                     tpary = tokens[++j to -1].tuntil(paramf);
-                    fparam = tpary.tjoin();
+                    fparam = (String)tpary;
                     j += (|tpary| + 1);
                 }
+                rtype = tokens[j].text;
                 fname = tokens[++j].text;
-                j += (|tokens[++j to -1].tuntil(argsf)| + 1);
-                fsrc = "";
-                if (tokens[++j].type == Token.CODE) { // this may be always true
-                    fsrc = Lang.tokenize(tokens[j].text).tjoin();
+                sign = "%s{#0} %s{#1}"(rtype, fname);
+                for (t : tokens[++j to -1]) {
+                    if (t.text == "{" || t.type == Token.CODE) break;
+                    sign += " %s{#0}"(t.text);
+                    j++;
                 }
-                else { // ***
+                fsrc = "";
+                if (tokens[j].type == Token.CODE) { // this may be always true
+                    fsrc = (String)Lang.tokenize(tokens[j].text);
+                }
+                else { // *** may be ignored
                     tcary = tokens[++j to -1].tuntil(codef);
-                    fsrc = tcary.tjoin();
+                    fsrc = (String)tcary;
                     j += (|tcary|);
                 }
-                tfunc = new TaskFunc(fname, fparam, fsrc);
-                _script += regist(tfunc);
+                tfunc = new TaskFunc(fname, sign, fparam, fsrc);
+                if (fname in? _tfmap == false) {
+                    _script += "%s{#0};\n"(tfunc.sign);
+                    _tfmap[fname] = new TaskFunc[0];
+                }
+                tfary = (TaskFunc[])_tfmap[fname];
+                tfary << tfunc;
+                _script += "/* %s{#0} */\n"(tfunc.id);
                 i = j;
             }
             else {
@@ -246,55 +263,72 @@ class TaskScript {
 
     void attach() {
         for (tfname : _tfmap.keys()) {
-            tfary = tfmap[tfname];
-            tpfary = new TaskProcFunc[|tfary|];
-            for (int i = 0; i < |tfary|; i++) {
-                tpf = new TaskProcFunc(tfary[i]);
-                tpf.evalParam(this);
-                tpfary[i] = tpf;
+            tfary = (TaskFunc[])tfmap[tfname];
+            proc_reserved = new boolean[_numprocs];
+            tf_remain = new TaskFunc[0];
+            for (tf : tfary) {
+                tf.evalParam(this);
+                if (|tf.ranks| > 0) {
+                    treserved = 0;
+                    for (r : tf.ranks) {
+                        eexit(!proc_reserved[r], "specified rank duplicated in [%s{#0}]"(tfname));
+                        proc_reserved[r] = true;
+                        treserved++;
+                    }
+                    if (treserved == tf.size) continue;
+                }
+                tf_remain << tf;
             }
-            _tpfmap[tfname] = tpfary;
+            proc_remain = new int[0];
+            for (int i = 0; i < _numprocs; i++) {
+                if (!proc_reserved[i]) proc_remain << i;
+            }
+            for (tf : tf_remain) {
+                tremain = tf.size - |tf.ranks|;
+                for (int i = 0; i < tremain; i++) {
+                    eexit(|proc_remain| > 0, "required task procs > numprocs in [%s{#0}]"(tfname));
+                    r = proc_remain[0];
+                    proc_remain.remove(0);
+                    tf.ranks << r;
+                }
+            }
         }
     }
 
     void run() {
-        keys = _tpfmap.keys();
-        klen = |keys|;
-        for (int i = 0; i < klen; i++) {
-            tpfname = keys[i];
-            tpfary = (TaskProcFunc[])_tpfmap[tpfname];
-            len = |tpfary|;
-            pflags = new boolean[_numprocs];
-            rflags = new boolean[len];
-            tpsize = 0;
-            for (int i = 0; i < len; i++) {
-                tpf = tpfary[i];
-                for (r : tpf.ranks) {
-                    eexit(!pflags[r], "specified rank duplicated in [%s{#0}"(tpfname));
-                    pflags[r] = true;
-                    rflags[i] = true;
+        tf_procs = new TaskFunc[][_numprocs];
+        for (int i = 0; i < _numprocs; i++) {
+            tf_procs[i] = new TaskFunc[0];
+        }
+        for (tfname : tfmap.keys()) {
+            tfary = (TaskFunc[])_tfmap[tfname];
+            for (tf : tfary) {
+                for (tr : tf.ranks) {
+                    tf_procs[tr] << tf;
                 }
             }
-            for (int i = 0; i < len; i++) {
-                tpf = tpfary[i];
-                if (rflags[i]) {
-                    tpsize += tpf.size;
-                    continue;
+        }
+        pscripts = new String[_numprocs];
+        phead = "";
+        comms = [];
+        for (int i = 0; i < _numprocs; i++) {
+            tfs = (TaskFunc[])tf_procs[i];
+            pscript = _script;
+            for (tf : tfs) {
+                pcomm = "comm_%s{#0}"("%s"(tf.hashCode()));
+                if (pcomm in? comms == false) {
+                    phead += "%s{#0} = MPI.setWorld(MPIComm.create([%s{#1}]));\n"(pcomm, (String)tf.ranks);
+                    comms << pcomm;
                 }
-                eexit(tpsize + tpf.size <= _numprocs, "specified functions size in [%s{#0}]"(tpfname));
-                tpranks = new int[0];
-                for (int i = 0; i < tpf.size; i++) {
-                    tpranks << tpsize + i;
-                }
-                tpranks.reshape([|tpranks|]);
-                tpf.ranks = tpranks;
-                tpsize += tpf.size;
+                tscript = "%s{#0}\n{\nMPIComm.setWorld(%s{#1});\n%s{#2}MPIComm.resetWorld();\n}"(tf.sign, pcomm, tf.source);
+                pscript = pscript.replace("/* %s{#0} */"(tf.id), tscript);
             }
-            for (int i = 0; i < len; i++) {
-                tpf = tpfary[i];
-                print tpf.tfunc.id, tpf.ranks;
-            }
-            print "---";
+            pscripts[i] = pscript;
+        }
+        for (int i = 0; i < _numprocs; i++) {
+            pscript = pscripts[i];
+            task_proc_script = phead + "\n" + pscript;
+            OUT.println(task_proc_script);
         }
     }
 

@@ -17,7 +17,7 @@ KMETHOD MPIComm_send(CTX ctx, ksfp_t *sfp _RIX)
 	double _duration = _finish - _begin;
 	KNH_NTRACE2(ctx, "MPI_Send", K_NOTICE,
 				KNH_LDATA(LOG_f("begin", _begin), LOG_f("finish", _finish), LOG_f("duration", _duration),
-						  LOG_i("myrank", MPIC_RANK(comm)), LOG_i("count", count), LOG_i("datatype", (int)MPID_TYPE(sdata)),
+						  LOG_i("myrank", MPIC_RANK(comm)), LOG_i("count", count), LOG_p("datatype", MPID_TYPE(sdata)),
 						  LOG_i("dest_rank", dest_rank), LOG_i("tag", tag)));
 	RETURNi_(ret);
 }
@@ -56,7 +56,7 @@ KMETHOD MPIComm_recv(CTX ctx, ksfp_t *sfp _RIX)
 	double _duration = _finish - _begin;
 	KNH_NTRACE2(ctx, "MPI_Recv", K_NOTICE,
 				KNH_LDATA(LOG_f("begin", _begin), LOG_f("finish", _finish), LOG_f("duration", _duration),
-						  LOG_i("myrank", MPIC_RANK(comm)), LOG_i("count", count), LOG_i("datatype", (int)MPID_TYPE(rdata)),
+						  LOG_i("myrank", MPIC_RANK(comm)), LOG_i("count", count), LOG_p("datatype", MPID_TYPE(rdata)),
 						  LOG_i("src_rank", src_rank), LOG_i("tag", tag)));
 	RETURNi_(ret);
 }

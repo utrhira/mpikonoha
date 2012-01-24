@@ -95,34 +95,6 @@ static void opt_p(CTX ctx, int mode, const char *optstr)
 	port = mode;
 }
 
-static kbool_t isMPIMode = 0;
-static int kMPI_initialized = 0;
-static int kMPI_worldRank;
-static int kMPI_worldSize;
-
-static void opt_mpi(CTX ctx, int mode, const char *optstr)
-{
-	MPI_Initialized(&kMPI_initialized);
-	if(kMPI_initialized) {
-		MPI_Comm_rank(MPI_COMM_WORLD, &kMPI_worldRank);
-		MPI_Comm_size(MPI_COMM_WORLD, &kMPI_worldSize);
-		if (kMPI_worldSize > 1) {
-			static kMPITask head;
-			head.world  = MPI_COMM_WORLD;
-			head.script = NULL; // assigned @ this:konoha_main
-			head.next   = NULL;
-			static kMPITaskContext tctx;
-			tctx.world = NULL; // assigned @ konoha.mpi/mpi.c:initWorld
-			tctx.tasks = (struct kMPITask*)&head;
-			ctx->wshare->mpictx = (struct kMPITaskContext*)&tctx;
-			isMPIMode = 1;
-		} else {
-			KNH_NOTE("only 1 proc is running: MPI mode ignored");
-		}
-	} else {
-		KNH_NOTE("process isn't initialized for MPI");
-	}
-}
 
 /* ----------------------------------------------------------------------- */
 
@@ -213,6 +185,32 @@ static void opt_help(CTX ctx, int mode, const char *optstr)
 	kString* home = knh_getPropertyNULL(ctx, STEXT("konoha.home.path"));
 	fprintf(stdout, HELPMSG, S_totext(home), knh_getSystemEncoding());
 	exit(0);
+}
+
+/* ----------------------------------------------------------------------- */
+/* [MPI] */
+
+#include "konoha_mpi.h"
+
+static kbool_t isMPIMode = 0;
+static int kMPI_worldRank;
+static int kMPI_worldSize;
+
+static void opt_mpi(CTX ctx, int mode, const char *optstr)
+{
+	int kMPI_initialized = 0;
+	MPI_Initialized(&kMPI_initialized);
+	if(kMPI_initialized) {
+		MPI_Comm_rank(MPI_COMM_WORLD, &kMPI_worldRank);
+		MPI_Comm_size(MPI_COMM_WORLD, &kMPI_worldSize);
+		if (kMPI_worldSize > 1) {
+			isMPIMode = 1;
+		} else {
+			KNH_NOTE("only one process is running: option(--mpi) ignored");
+		}
+	} else {
+		KNH_NOTE("process isn't initialized for MPI");
+	}
 }
 
 /* ----------------------------------------------------------------------- */
@@ -768,6 +766,58 @@ struct konoha_module_driver konoha_modules[] = {
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #endif
 
+/* ------------------------------------------------------------------------ */
+/* [MPI main] */
+
+static kMPITaskContext _tctx;
+kMPITaskContext *kmpi_global_tctx = &_tctx; // shared with konoha.mpi
+
+const char* knh_readAllScript(CTX ctx, const char *path);
+
+static int knh_startMPIScript(CTX ctx, int argc, const char **argv)
+{
+	int ret = 0;
+	knh_loadScriptPackageList(ctx, "konoha.mpi");
+	kMPIComm *tworld = MPICTX_TWORLD(kmpi_global_tctx);
+	if (tworld != NULL) {
+		const char *tscript = NULL;
+		size_t tsize = 0;
+		if (kMPI_worldRank == 0) {
+			tscript = knh_readAllScript(ctx, argv[0]);
+			if (tscript != NULL) tsize = strlen(tscript);
+		}
+		MPI_Bcast((void*)&tsize, 1, MPI_INT, 0/*root*/, MPI_COMM_WORLD);
+		if (tsize > 0) {
+			if (kMPI_worldRank > 0) {
+				tscript = (const char*)malloc(tsize); // free @ MPICTX_TASKS_FREE
+			}
+			MPI_Bcast((void*)&tscript[0], tsize, MPI_CHAR, 0/*root*/, MPI_COMM_WORLD);
+			kMPITask *task = MPIT_MALLOC();
+			MPIT_INITV(task, MPI_COMM_WORLD, tscript, tsize);
+			MPICTX_THEAD(kmpi_global_tctx) = task;
+			MPI_Barrier(MPI_COMM_WORLD);
+			do {
+				MPIC_INITV(tworld, MPIT_COMM(task));
+				MPI_Barrier(MPIC_COMM(tworld));
+				kbytes_t bscript = MPIT_SCRIPT(task);
+				if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
+					ret = knh_runMain(ctx, argc, argv);
+				}
+			} while (MPIT_NEXTV(task) != NULL);
+			MPICTX_TASKS_FREE(kmpi_global_tctx);
+		}
+		else {
+			KNH_NOTE("script is empty");
+		}
+	}
+	else {
+		KNH_NOTE("konoha.mpi is not initialized");
+	}
+	return ret;
+}
+
+/* ------------------------------------------------------------------------ */
+
 int konoha_main(konoha_t konoha, int argc, const char **argv)
 {
 	CTX ctx = (CTX)konoha;
@@ -792,39 +842,7 @@ int konoha_main(konoha_t konoha, int argc, const char **argv)
 		ret = konoha_shell(ctx, NULL);
 	}
 	else if(isMPIMode) {
-		// using konoha.mpi
-		// if (rank == 0) load initscript
-		///*
-		if(kMPI_worldRank == 0 &&
-		   knh_startScript(ctx, argv[0]) == K_CONTINUE) {
-			ret = knh_runMain(ctx, argc, argv);
-		}
-		//*/
-		kMPITaskContext *tctx = (kMPITaskContext*)ctx->wshare->mpictx;
-		size_t initsiz = tctx->initsiz;
-		MPI_Bcast(&initsiz, 1, MPI_INT, 0/*root*/, MPI_COMM_WORLD);
-		if(initsiz > 0) {
-			const char *initscript = (kMPI_worldRank == 0) ?
-				tctx->initscript : (const char*)malloc(initsiz);
-			MPI_Bcast((void*)&initscript[0], initsiz, MPI_CHAR, 0/*root*/, MPI_COMM_WORLD);
-			kbytes_t bscript = {{initscript}, initsiz};
-			if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
-				ret = knh_runMain(ctx, argc, argv);
-			}
-		}
-		kMPITask *task = (kMPITask*)tctx->tasks; // head
-		kMPIComm *tworld = tctx->world;
-		while(task->next != NULL) {
-			task = (kMPITask*)task->next;
-			MPIC_COMM(tworld) = task->world;
-			MPIC_init_rank(tworld);
-			MPIC_init_size(tworld);
-			MPI_Barrier(MPIC_COMM(tworld));
-			kbytes_t bscript = {{task->script}, task->scriptsize};
-			if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
-				ret = knh_runMain(ctx, argc, argv);
-			}
-		}
+		ret = knh_startMPIScript(ctx, argc, argv);
 	}
 	else {
 		if(knh_startScript(ctx, argv[0]) == K_CONTINUE && !knh_isCompileOnly(ctx)) {

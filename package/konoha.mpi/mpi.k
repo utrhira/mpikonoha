@@ -12,7 +12,6 @@ include "lib:gluelink";
 @Native @Static void  MPI.preventLog();  // for ac
 @Native @Static Float MPI.getWtime();    // for MPI_Wtime
 @Native @Static void  MPI.addTaskScript(MPIComm comm, String script);
-@Native @Static void  MPI.setTaskInitScript(String script);
 
 /* ------------------------------------------------------------------------ */
 /* Array Extra API */

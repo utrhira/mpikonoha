@@ -1,11 +1,27 @@
 #include "konoha_mpi.h"
 
 #ifdef __cplusplus
-extern "C" {
+BEGIN_EXTERN_C
 #endif
 
+/* ======================================================================== */
+/* ClassDef API (defClass & constClass) */
+
 /* ------------------------------------------------------------------------ */
-/* ClassDef */
+/* class MPI */
+
+DEFAPI(void) defMPI(CTX ctx, kclass_t cid, kclassdef_t *cdef)
+{
+	cdef->name = "MPI";
+}
+
+DEFAPI(void) constMPI(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
+{
+	/* dummy */;
+}
+
+/* ------------------------------------------------------------------------ */
+/* class MPIComm */
 
 static void knh_MPIComm_init(CTX ctx, kRawPtr *o)
 {
@@ -29,6 +45,32 @@ static void knh_MPIComm_free(CTX ctx, kRawPtr *o)
 	MPIC(comm, o);
 	if (MPIC_PROC(comm)) free(comm->proc_name); // allocated by strdup
 }
+
+DEFAPI(void) defMPIComm(CTX ctx, kclass_t cid, kclassdef_t *cdef)
+{
+	cdef->name = "MPIComm";
+	cdef->init = knh_MPIComm_init;
+	cdef->free = knh_MPIComm_free;
+}
+
+extern kMPITaskContext *kmpi_global_tctx; // defined @src/main/runtime.c
+
+DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
+{
+	int init = 0;
+	MPI_Initialized(&init);
+	if (init) {
+		MPIC(world, new_O(MPIComm, cid));
+		MPIC_COMM(world) = MPI_COMM_WORLD;
+		MPI_Comm_rank(MPIC_COMM(world), &MPIC_RANK(world));
+		MPI_Comm_size(MPIC_COMM(world), &MPIC_SIZE(world));
+		knh_addClassConst(ctx, cid, new_String(ctx, "WORLD"), (kObject*)world);
+		MPICTX_TWORLD(kmpi_global_tctx) = world; // only used by mpikonoha
+	}
+}
+
+/* ------------------------------------------------------------------------ */
+/* class MPIData */
 
 static void knh_MPIData_init(CTX ctx, kRawPtr *o)
 {
@@ -56,6 +98,28 @@ static void knh_MPIData_p(CTX ctx, kOutputStream *w, kRawPtr *o, int level)
 	if (MPID_POFS(data) > 0) knh_printf(ctx, w, "(+%d)offset", MPID_POFS(data));
 }
 
+DEFAPI(void) defMPIData(CTX ctx, kclass_t cid, kclassdef_t *cdef)
+{
+	cdef->name = "MPIData";
+	cdef->init = knh_MPIData_init;
+	cdef->reftrace = knh_MPIData_reftrace;
+	cdef->p = knh_MPIData_p;
+}
+
+static knh_IntData_t MPIDataConstInt[] = {
+	{"CHAR", (kint_t)MPI_CHAR},
+	{"LONG", (kint_t)MPI_LONG},
+	{"DOUBLE", (kint_t)MPI_DOUBLE}
+};
+
+DEFAPI(void) constMPIData(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
+{
+	kapi->loadClassIntConst(ctx, cid, MPIDataConstInt);
+}
+
+/* ------------------------------------------------------------------------ */
+/* class MPIOp */
+
 static void knh_MPIOp_init(CTX ctx, kRawPtr *o)
 {
 	MPIO(op, o);
@@ -73,57 +137,11 @@ static void knh_MPIOp_reftrace(CTX ctx, kRawPtr *p FTRARG)
 	}
 }
 
-static void knh_MPIRequest_init(CTX ctx, kRawPtr *o)
-{
-	MPIR(req, o);
-	MPIR_INC(req) = 0;
-}
-
-DEFAPI(void) defMPI(CTX ctx, kclass_t cid, kclassdef_t *cdef)
-{
-	cdef->name = "MPI";
-}
-
-DEFAPI(void) defMPIComm(CTX ctx, kclass_t cid, kclassdef_t *cdef)
-{
-	cdef->name = "MPIComm";
-	cdef->init = knh_MPIComm_init;
-	cdef->free = knh_MPIComm_free;
-}
-
-DEFAPI(void) defMPIData(CTX ctx, kclass_t cid, kclassdef_t *cdef)
-{
-	cdef->name = "MPIData";
-	cdef->init = knh_MPIData_init;
-	cdef->reftrace = knh_MPIData_reftrace;
-	cdef->p = knh_MPIData_p;
-}
-
-DEFAPI(void) defMPIRequest(CTX ctx, kclass_t cid, kclassdef_t *cdef)
-{
-	cdef->name = "MPIRequest";
-	cdef->init = knh_MPIRequest_init;
-}
-
 DEFAPI(void) defMPIOp(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "MPIOp";
 	cdef->init = knh_MPIOp_init;
 	cdef->reftrace = knh_MPIOp_reftrace;
-}
-
-/* ------------------------------------------------------------------------ */
-/* Const */
-
-static void knh_MPI_initWorld(CTX ctx, kclass_t cid)
-{
-	MPIC(world, new_O(MPIComm, cid));
-	MPIC_COMM(world) = MPI_COMM_WORLD;
-	MPI_Comm_rank(MPIC_COMM(world), &MPIC_RANK(world));
-	MPI_Comm_size(MPIC_COMM(world), &MPIC_SIZE(world));
-	knh_addClassConst(ctx, cid, new_String(ctx, "WORLD"), (kObject*)world);
-	kMPITaskContext *tctx = (kMPITaskContext*)ctx->wshare->mpictx;
-	if (tctx) tctx->world = world; // only used by mpikonoha
 }
 
 static knh_IntData_t MPIConstOp[] = {
@@ -140,38 +158,34 @@ static knh_IntData_t MPIConstOp[] = {
 	{NULL, 0},
 };
 
-static void knh_MPI_initOp(CTX ctx, kclass_t cid)
-{
-	knh_IntData_t *d;
-	for (d = &MPIConstOp[0]; d->ivalue > 0; d++) {
-		MPIO(op, new_O(MPIOp, cid));
-		MPIO_OP(op) = (MPI_Op)d->ivalue;
-		MPIO_OPFUNC(op) = NULL;
-		knh_addClassConst(ctx, cid, new_String(ctx, d->name), (Object*)op);
-	}
-}
-
-DEFAPI(void) constMPI(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
-{
-	/* dummy */;
-}
-
-DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
+DEFAPI(void) constMPIOp(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 {
 	int init = 0;
 	MPI_Initialized(&init);
-	if (init) knh_MPI_initWorld(ctx, cid);
+	if (init) {
+		knh_IntData_t *d;
+		for (d = &MPIConstOp[0]; d->ivalue > 0; d++) {
+			MPIO(op, new_O(MPIOp, cid));
+			MPIO_OP(op) = (MPI_Op)d->ivalue;
+			MPIO_OPFUNC(op) = NULL;
+			knh_addClassConst(ctx, cid, new_String(ctx, d->name), (Object*)op);
+		}
+	}
 }
 
-static knh_IntData_t MPIDataConstInt[] = {
-	{"CHAR", (kint_t)MPI_CHAR},
-	{"LONG", (kint_t)MPI_LONG},
-	{"DOUBLE", (kint_t)MPI_DOUBLE}
-};
+/* ------------------------------------------------------------------------ */
+/* class MPIRequest */
 
-DEFAPI(void) constMPIData(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
+static void knh_MPIRequest_init(CTX ctx, kRawPtr *o)
 {
-	kapi->loadClassIntConst(ctx, cid, MPIDataConstInt);
+	MPIR(req, o);
+	MPIR_INC(req) = 0;
+}
+
+DEFAPI(void) defMPIRequest(CTX ctx, kclass_t cid, kclassdef_t *cdef)
+{
+	cdef->name = "MPIRequest";
+	cdef->init = knh_MPIRequest_init;
 }
 
 DEFAPI(void) constMPIRequest(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
@@ -179,26 +193,22 @@ DEFAPI(void) constMPIRequest(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 	/* dummy */;
 }
 
-DEFAPI(void) constMPIOp(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
+
+/* ======================================================================== */
+/* PackageDef API (init) */
+
+static const struct kcontext_t *kmpi_err_ctx;
+
+static void knh_MPI_errhandler(MPI_Comm *comm, int *err, ...)
 {
-	int init = 0;
-	MPI_Initialized(&init);
-	if (init) knh_MPI_initOp(ctx, cid);
-}
-
-void knh_MPI_initArrayFuncData(CTX ctx);
-void knh_MPI_initArrayPrintFunc(CTX ctx);
-
-static const struct kcontext_t *global_ctx;
-
-void knh_MPI_errhandler(MPI_Comm *comm, int *err, ...)
-{
-	if (*err != MPI_SUCCESS) {
+	int ecode = *err;
+	if (ecode != MPI_SUCCESS) {
+		CTX ctx = (CTX)kmpi_err_ctx;
 		char errstr[MPI_MAX_ERROR_STRING] = {0};
 		int errlen = 0;
-		MPI_Error_string(*err, errstr, &errlen);
-		knh_ldata_t ldata[] = {LOG_s("errmsg", errstr), LOG_END};
-		KNH_NTRACE(global_ctx, "MPI_Error", K_FAILED, ldata);
+		MPI_Error_string(ecode, errstr, &errlen);
+		KNH_NTRACE2(ctx, "MPI_Error", K_FAILED,
+					KNH_LDATA(LOG_i("ecode", ecode), LOG_s("errmsg", errstr)));
 	}
 }
 
@@ -207,8 +217,7 @@ DEFAPI(const knh_PackageDef_t*) init(CTX ctx, knh_LoaderAPI_t *kapi)
 	int init = 0;
 	MPI_Initialized(&init);
 	if (init) {
-		//MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-		global_ctx = ctx;
+		kmpi_err_ctx = ctx;
 		MPI_Errhandler errfn;
 		MPI_Comm_create_errhandler(knh_MPI_errhandler, &errfn);
 		MPI_Errhandler_set(MPI_COMM_WORLD, errfn);
@@ -225,5 +234,5 @@ DEFAPI(const knh_PackageDef_t*) init(CTX ctx, knh_LoaderAPI_t *kapi)
 /* ------------------------------------------------------------------------ */
 
 #ifdef __cplusplus
-}
+END_EXTERN_C
 #endif

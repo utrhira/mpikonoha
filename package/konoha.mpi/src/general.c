@@ -19,40 +19,26 @@ KMETHOD MPI_getWtime(CTX ctx, ksfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## @Static method void MPI.addTaskScript(MPIComm comm, String script);
 
+extern kMPITaskContext *kmpi_global_tctx; // defined @src/main/runtime.c
+
 KMETHOD MPI_addTaskScript(CTX ctx, ksfp_t *sfp _RIX)
 {
-	kMPITaskContext *tctx = (kMPITaskContext*)ctx->share->mpictx;
-	if (tctx != NULL) {
-		MPIC(tworld, sfp[1].o);
-		if (MPIC_RANK(tworld) >= 0) {
-			kString *script = sfp[2].s;
-			kMPITask *task = (kMPITask*)malloc(sizeof(kMPITask));
-			task->world = MPIC_COMM(tworld);
-			task->script = strdup(S_totext(script));
-			task->scriptsize = S_size(script);
-			task->next = NULL;
-			kMPITask *t;
-			for (t = tctx->tasks; t->next != NULL; t = (kMPITask*)t->next) ;
-			t->next = (struct kMPITask*)task;
+	MPIC(tworld, sfp[1].o);
+	if (MPIC_RANK(tworld) >= 0) {
+		kString *script = sfp[2].s;
+		kMPITask *task = MPIT_MALLOC();
+		const char *tscript = strdup(S_totext(script)); // free @ MPICTX_TASKS_FREE
+		MPIT_INITV(task, MPIC_COMM(tworld), tscript, S_size(script));
+		kMPITask *tlist = MPICTX_THEAD(kmpi_global_tctx);
+		if (tlist != NULL) {
+			while(MPIT_NEXT(tlist) != NULL) {
+				MPIT_NEXTV(tlist);
+			}
+			tlist->next = task;
 		}
-	} else {
-		KNH_NOTE("konoha isn't initialized as MPI mode");
-	}
-	RETURNvoid_();
-}
-
-/* ------------------------------------------------------------------------ */
-//## @Static method void MPI.setTaskInitScript(String script);
-
-KMETHOD MPI_setTaskInitScript(CTX ctx, ksfp_t *sfp _RIX)
-{
-	kMPITaskContext *tctx = (kMPITaskContext*)ctx->share->mpictx;
-	if (tctx != NULL) {
-		kString *script = sfp[1].s;
-		tctx->initscript = strdup(S_totext(script));
-		tctx->initsiz = S_size(script);
-	} else {
-		KNH_NOTE("konoha isn't initialized as MPI mode");
+		else {
+			KNH_NOTE("process is not running as MPI mode(use --mpi option)");
+		}
 	}
 	RETURNvoid_();
 }
