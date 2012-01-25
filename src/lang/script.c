@@ -1220,13 +1220,15 @@ kstatus_t knh_startScript(CTX ctx, const char *path)
 	return status;
 }
 
+extern const char kMPI_worldURI[16];
+
 kstatus_t knh_startBytesScript(CTX ctx, kbytes_t script)
 {
 	kstatus_t status = K_BREAK;
 	KONOHA_BEGIN(ctx);
 	kline_t uline = 1;
 	kInputStream *in = new_BytesInputStream(ctx, script.text, script.len);
-	kuri_t uri = knh_getURI(ctx, STEXT("eval"));
+	kuri_t uri = knh_getURI(ctx, STEXT(kMPI_worldURI));
 	ULINE_setURI(uline, uri);
 	status = knh_InputStream_load(ctx, in, uline);
 	knh_stack_clear(ctx, ctx->stack);

@@ -1,6 +1,15 @@
 #include "../konoha_mpi.h"
 
 /* ------------------------------------------------------------------------ */
+//## method MPIComm MPIComm.getWorld();
+KMETHOD MPIComm_getWorld(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPIC(world, new_O(MPIComm, O_cid(sfp[0].o)));
+	MPIC_INITV(world, MPI_COMM_WORLD);
+	RETURN_(world);
+}
+
+/* ------------------------------------------------------------------------ */
 //## method Int MPIComm.getRank();
 KMETHOD MPIComm_getRank(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -50,9 +59,9 @@ KMETHOD MPIComm_create(CTX ctx, ksfp_t *sfp _RIX)
 			MPI_Comm_group(MPIC_COMM(comm), &base);
 			MPI_Group_incl(base, len, ranks, &newg);
 			MPI_Comm_create(MPIC_COMM(comm), newg, &MPIC_COMM(newc));
-			MPI_Comm_rank(MPIC_COMM(newc), &MPIC_RANK(newc));
-			MPI_Comm_size(MPIC_COMM(newc), &MPIC_SIZE(newc));
+			MPIC_INITV(newc, MPIC_COMM(newc));
 			MPIC_PROC(newc) = strdup(MPIC_PROC(comm)); // to be free
+			// TODO: Groups should be free ?
 		}
 		else {
 			//FATAL ERROR!!

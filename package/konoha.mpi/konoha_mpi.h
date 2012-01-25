@@ -168,10 +168,12 @@ struct kMPITask {
 typedef struct kMPITaskContext kMPITaskContext;
 struct kMPITaskContext {
 	kMPIComm *kworld;
+	kbytes_t  taskscript;
 	kMPITask *tasks;
 };
 
 #define MPICTX_THEAD(o) (o)->tasks
+#define MPICTX_TSCRIPT(o) (o)->taskscript
 #define MPICTX_TWORLD(o) (o)->kworld
 #define MPICTX_TASKS_FREE(o) \
 	{ \

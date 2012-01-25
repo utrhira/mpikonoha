@@ -193,20 +193,22 @@ static void opt_help(CTX ctx, int mode, const char *optstr)
 #include "konoha_mpi.h"
 
 static kbool_t isMPIMode = 0;
-static int kMPI_worldRank;
-static int kMPI_worldSize;
+static int kMPI_worldRank = -1;
+static kMPITaskContext _tctx;
+kMPITaskContext *kMPI_global_tctx = &_tctx; // shared with konoha.mpi
+const char kMPI_worldURI[16]; // used @ knh_startBytesScript
 
-static void opt_mpi(CTX ctx, int mode, const char *optstr)
+static void opt_vertiks(CTX ctx, int mode, const char *optstr)
 {
 	int kMPI_initialized = 0;
 	MPI_Initialized(&kMPI_initialized);
 	if(kMPI_initialized) {
 		MPI_Comm_rank(MPI_COMM_WORLD, &kMPI_worldRank);
-		MPI_Comm_size(MPI_COMM_WORLD, &kMPI_worldSize);
-		if (kMPI_worldSize > 1) {
+		if (kMPI_worldRank >= 0) {
+			snprintf((char*)kMPI_worldURI, sizeof(kMPI_worldURI), "mpiproc<%d>", kMPI_worldRank);
 			isMPIMode = 1;
 		} else {
-			KNH_NOTE("only one process is running: option(--mpi) ignored");
+			KNH_NOTE("only one process is running: option(--vertiks) ignored");
 		}
 	} else {
 		KNH_NOTE("process isn't initialized for MPI");
@@ -253,7 +255,7 @@ static knh_optdata_t optdata[] = {
 	{OPT_("--enforce-security"), OPT_STRING, opt_dummy},
 	{OPT_("--logcached"), OPT_STRING, opt_dummy},
 	{OPT_("-V"), OPT_NUMBER, opt_version},
-	{OPT_("--mpi"), OPT_EMPTY, opt_mpi},
+	{OPT_("--vertiks"), OPT_EMPTY, opt_vertiks},
 	{OPT_("--version"), OPT_NUMBER, opt_version},
 	{NULL, 0, OPT_EMPTY, NULL}, // END
 };
@@ -769,49 +771,50 @@ struct konoha_module_driver konoha_modules[] = {
 /* ------------------------------------------------------------------------ */
 /* [MPI main] */
 
-static kMPITaskContext _tctx;
-kMPITaskContext *kmpi_global_tctx = &_tctx; // shared with konoha.mpi
-
 const char* knh_readAllScript(CTX ctx, const char *path);
 
 static int knh_startMPIScript(CTX ctx, int argc, const char **argv)
 {
 	int ret = 0;
 	knh_loadScriptPackageList(ctx, "konoha.mpi");
-	kMPIComm *tworld = MPICTX_TWORLD(kmpi_global_tctx);
-	if (tworld != NULL) {
-		const char *tscript = NULL;
-		size_t tsize = 0;
-		if (kMPI_worldRank == 0) {
-			tscript = knh_readAllScript(ctx, argv[0]);
-			if (tscript != NULL) tsize = strlen(tscript);
+	const char *tscript = NULL;
+	size_t tsize = 0;
+	if (kMPI_worldRank == 0) {
+		tscript = knh_readAllScript(ctx, argv[0]);
+		if (tscript != NULL) tsize = strlen(tscript);
+	}
+	MPI_Bcast((void*)&tsize, 1, MPI_INT, 0/*root*/, MPI_COMM_WORLD);
+	if (tsize > 0) {
+		if (kMPI_worldRank > 0) {
+			tscript = (const char*)malloc(tsize);
 		}
-		MPI_Bcast((void*)&tsize, 1, MPI_INT, 0/*root*/, MPI_COMM_WORLD);
-		if (tsize > 0) {
-			if (kMPI_worldRank > 0) {
-				tscript = (const char*)malloc(tsize); // free @ MPICTX_TASKS_FREE
-			}
-			MPI_Bcast((void*)&tscript[0], tsize, MPI_CHAR, 0/*root*/, MPI_COMM_WORLD);
-			kMPITask *task = MPIT_MALLOC();
-			MPIT_INITV(task, MPI_COMM_WORLD, tscript, tsize);
-			MPICTX_THEAD(kmpi_global_tctx) = task;
-			MPI_Barrier(MPI_COMM_WORLD);
-			do {
-				MPIC_INITV(tworld, MPIT_COMM(task));
-				MPI_Barrier(MPIC_COMM(tworld));
-				kbytes_t bscript = MPIT_SCRIPT(task);
-				if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
-					ret = knh_runMain(ctx, argc, argv);
-				}
-			} while (MPIT_NEXTV(task) != NULL);
-			MPICTX_TASKS_FREE(kmpi_global_tctx);
+		MPI_Bcast((void*)&tscript[0], tsize, MPI_CHAR, 0/*root*/, MPI_COMM_WORLD);
+		MPICTX_TSCRIPT(kMPI_global_tctx).text = tscript;
+		MPICTX_TSCRIPT(kMPI_global_tctx).len = tsize;
+		static const char *_init = "using konoha.mpi.*;\nnew TaskScript().exec();";
+		kbytes_t initscript = {{_init}, strlen(_init)};
+		if(knh_startBytesScript(ctx, initscript) == K_CONTINUE) {
+			ret = knh_runMain(ctx, argc, argv);
 		}
-		else {
-			KNH_NOTE("script is empty");
-		}
+		MPI_Barrier(MPI_COMM_WORLD);
+		kMPITask *task = MPICTX_THEAD(kMPI_global_tctx);
+		kMPIComm *tcomm = MPICTX_TWORLD(kMPI_global_tctx);
+		do {
+			MPIC_INITV(tcomm, MPIT_COMM(task));
+			MPI_Barrier(MPIC_COMM(tcomm));
+			kbytes_t bscript = MPIT_SCRIPT(task);
+//			printf("--<%d>-------------------------------------------------------------------\n"
+// 				   "%s\n"
+// 				   "------------------------------------------------------------------------\n", kMPI_worldRank, bscript.text);
+			if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
+ 				ret = knh_runMain(ctx, argc, argv);
+ 			}
+		} while (MPIT_NEXTV(task) != NULL);
+		MPICTX_TASKS_FREE(kMPI_global_tctx);
+		free((void*)tscript);
 	}
 	else {
-		KNH_NOTE("konoha.mpi is not initialized");
+		KNH_NOTE("task script is empty");
 	}
 	return ret;
 }

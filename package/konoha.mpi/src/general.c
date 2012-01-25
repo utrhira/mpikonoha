@@ -17,9 +17,25 @@ KMETHOD MPI_getWtime(CTX ctx, ksfp_t *sfp _RIX)
 }
 
 /* ------------------------------------------------------------------------ */
-//## @Static method void MPI.addTaskScript(MPIComm comm, String script);
+//## @Static method String MPI.getTaskScript();
 
-extern kMPITaskContext *kmpi_global_tctx; // defined @src/main/runtime.c
+extern kMPITaskContext *kMPI_global_tctx; // defined @src/main/runtime.c
+
+KMETHOD MPI_getTaskScript(CTX ctx, ksfp_t *sfp _RIX)
+{
+	kString *script;
+	if (kMPI_global_tctx != NULL) {
+		kbytes_t bscript = MPICTX_TSCRIPT(kMPI_global_tctx);
+		script = new_String2(ctx, CLASS_String, bscript.text, bscript.len, 0);
+	}
+	else {
+		script = (kString*)KNH_NULVAL(CLASS_String);
+	}
+	RETURN_(script);
+}
+
+/* ------------------------------------------------------------------------ */
+//## @Static method void MPI.addTaskScript(MPIComm comm, String script);
 
 KMETHOD MPI_addTaskScript(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -29,16 +45,26 @@ KMETHOD MPI_addTaskScript(CTX ctx, ksfp_t *sfp _RIX)
 		kMPITask *task = MPIT_MALLOC();
 		const char *tscript = strdup(S_totext(script)); // free @ MPICTX_TASKS_FREE
 		MPIT_INITV(task, MPIC_COMM(tworld), tscript, S_size(script));
-		kMPITask *tlist = MPICTX_THEAD(kmpi_global_tctx);
+		kMPITask *tlist = MPICTX_THEAD(kMPI_global_tctx);
 		if (tlist != NULL) {
 			while(MPIT_NEXT(tlist) != NULL) {
 				MPIT_NEXTV(tlist);
 			}
-			tlist->next = task;
+			MPIT_NEXT(tlist) = task;
 		}
 		else {
-			KNH_NOTE("process is not running as MPI mode(use --mpi option)");
+			MPICTX_THEAD(kMPI_global_tctx) = task;
 		}
 	}
+	RETURNvoid_();
+}
+
+/* ------------------------------------------------------------------------ */
+//## @Native @Static void  MPI.setTaskWorld(MPIComm comm);
+
+KMETHOD MPI_setTaskWorld(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPIC(tworld, sfp[1].o);
+	MPIC_INITV(MPICTX_TWORLD(kMPI_global_tctx), MPIC_COMM(tworld));
 	RETURNvoid_();
 }

@@ -53,7 +53,7 @@ DEFAPI(void) defMPIComm(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 	cdef->free = knh_MPIComm_free;
 }
 
-extern kMPITaskContext *kmpi_global_tctx; // defined @src/main/runtime.c
+extern kMPITaskContext *kMPI_global_tctx; // defined @src/main/runtime.c
 
 DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 {
@@ -61,11 +61,15 @@ DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 	MPI_Initialized(&init);
 	if (init) {
 		MPIC(world, new_O(MPIComm, cid));
-		MPIC_COMM(world) = MPI_COMM_WORLD;
-		MPI_Comm_rank(MPIC_COMM(world), &MPIC_RANK(world));
-		MPI_Comm_size(MPIC_COMM(world), &MPIC_SIZE(world));
+		MPIC_INITV(world, MPI_COMM_WORLD);
 		knh_addClassConst(ctx, cid, new_String(ctx, "WORLD"), (kObject*)world);
-		MPICTX_TWORLD(kmpi_global_tctx) = world; // only used by mpikonoha
+		knh_setClassDefaultValue(ctx, cid, world, NULL);
+		if (kMPI_global_tctx != NULL) {
+			MPIC(tworld, new_O(MPIComm, cid));
+			MPIC_INITV(tworld, MPI_COMM_WORLD);
+			knh_addClassConst(ctx, cid, new_String(ctx, "TWORLD"), (kObject*)tworld);
+			MPICTX_TWORLD(kMPI_global_tctx) = tworld; // only used by mpikonoha
+		}
 	}
 }
 
