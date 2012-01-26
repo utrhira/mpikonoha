@@ -266,11 +266,9 @@ static void knh_MPI_Array_p(CTX ctx, kOutputStream *out, kRawPtr *o, int level)
 
 void knh_MPI_initArrayPrintFunc(CTX ctx)
 {
-#ifdef K_USING_MACOSX_
 	const knh_ClassTBL_t* tbl = ClassTBL(CLASS_Array);
 	kclassdef_t *ArrayDef = (kclassdef_t*)tbl->cdef;
-	ArrayDef->p = knh_MPI_Array_p;
-#endif
+	ArrayDef->p = knh_MPI_Array_p; // const if original : modified @ mpikonoha
 }
 
 /* ------------------------------------------------------------------------ */
