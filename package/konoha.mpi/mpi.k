@@ -274,7 +274,10 @@ class TaskScript {
         }
         trimscript = "";
         foreach (line in _script.split("\n")) {
-            trimscript += line.replace($/^ ([^ ])/, "$1") + "\n";
+            if (line.startsWith(" ")) {
+                line = (|line|>1) ? line[1 to -1] : "";
+            }
+            trimscript += line + "\n";
         }
         _script = trimscript;
     }
