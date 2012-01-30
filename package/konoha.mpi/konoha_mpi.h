@@ -101,7 +101,7 @@ int   knh_MPIData_incSize(kMPIData *data, int count);
 int   knh_MPIData_getCapacity(kMPIData *data);
 
 /* ------------------------------------------------------------------------ */
-/* MPI Request */
+/* MPI Request (+ MPI Status) */
 
 //## class MPIRequest Object;
 
@@ -112,11 +112,15 @@ typedef struct {
 	int incflag;
 } kMPIRequest;
 
-#define MPIR_REQ(req) (&((req)->reqt))
+#define MPIR_REQ(req)  ((req)->reqt)
 #define MPIR_DATA(req) ((req)->data)
 #define MPIR_TYPE(req) (MPID_TYPE(MPIR_DATA(req)))
-#define MPIR_INC(req) ((req)->incflag)
+#define MPIR_INC(req)  ((req)->incflag)
 #define MPIR(v, o) kMPIRequest *v = ((kMPIRequest*)o)
+
+#define MPIS_SRC(stat)  ((stat).MPI_SOURCE)
+#define MPIS_TAG(stat)  ((stat).MPI_TAG)
+#define MPIS_ERR(stat)  ((stat).MPI_ERROR)
 
 /* ------------------------------------------------------------------------ */
 /* MPI Operator */

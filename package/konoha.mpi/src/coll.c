@@ -263,3 +263,47 @@ KMETHOD MPIComm_allReduce(CTX ctx, ksfp_t *sfp _RIX)
 	ret = 1;
 	RETURNb_(ret);
 }
+
+/* ------------------------------------------------------------------------ */
+//## method Int MPIComm.reduceScatter(MPIData sdata, MPIData rdata, int[] rcounts, MPIOp op);
+
+KMETHOD MPIComm_reduceScatter(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPIC(comm, sfp[0].o);
+	MPID(sdata, sfp[1].o);
+	MPID(rdata, sfp[2].o);
+	kArray *rcs = sfp[3].a;
+	MPIO(op, sfp[4].o);
+	int ret = 0;
+	size_t rsize = knh_Array_size(rcs);
+	size_t csize = MPIC_SIZE(comm);
+	int i, rcount, rsum, rcounts[csize];
+	if (rsize == csize) {
+		for (i = 0, rsum = 0; i < rsize; i++) {
+			int rc_n = (int)((kint_t)knh_Array_n(rcs, i));
+			rsum += rc_n;
+			rcounts[i] = rc_n;
+		}
+		if (rsum > MPID_SIZE(sdata)) {
+			KNH_NTHROW2(ctx, sfp, "Script!!", "MPIComm.reduceScatter: sdata < rcounts", K_FAILED,
+						KNH_LDATA(LOG_i("size of sdata", MPID_SIZE(sdata)), LOG_i("sum of rcount", rsum)));
+		}
+	} else if(rsize == 0) {
+		size_t dsize = MPID_SIZE(sdata);
+		int d = (dsize / csize) + 1;
+		int m = dsize % csize;
+		for (i = 0; i < m; rcounts[i++] = d) ;
+		for (d--; i < csize; rcounts[i++] = d) ;
+	} else {
+		KNH_NTHROW2(ctx, sfp, "Script!!", "MPIComm.reduceScatter: |comm| < |rcounts|", K_FAILED,
+					KNH_LDATA(LOG_i("size of comm", MPIC_SIZE(comm)), LOG_i("size of rcount", rsize)));
+	}
+	MPID_WCHK(rdata);
+	rcount = rcounts[MPIC_RANK(comm)];
+	int inc;
+	knh_MPIData_expand(ctx, rdata, &rcount, &inc);
+	knh_MPIData_incSize(rdata, inc);
+	MPI_Reduce_scatter(MPID_ADDR(sdata), MPID_ADDR(rdata), &rcounts[0], MPID_TYPE(sdata), MPIO_OP(op), MPIC_COMM(comm));
+	ret = 1;
+	RETURNb_(ret);
+}

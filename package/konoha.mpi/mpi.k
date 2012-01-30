@@ -76,6 +76,7 @@ include "lib:gluelink";
 @Native boolean MPIComm.allToAll(MPIData sdata, int scount, MPIData rdata, int rcount);
 @Native boolean MPIComm.reduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op, int root_rank);
 @Native boolean MPIComm.allReduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
+@Native boolean MPIComm.reduceScatter(MPIData sdata, MPIData rdata, int[] rcounts, MPIOp op);
 
 /* ======================================================================== */
 /* Utility Functions */

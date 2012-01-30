@@ -776,7 +776,7 @@ const char* knh_readAllScript(CTX ctx, const char *path);
 static int knh_startMPIScript(CTX ctx, int argc, const char **argv)
 {
 	int ret = 0;
-	knh_loadScriptPackageList(ctx, "konoha.mpi");
+	knh_loadPackage(ctx, new_bytes("konoha.mpi"));
 	const char *tscript = NULL;
 	size_t tsize = 0;
 	if (kMPI_worldRank == 0) {
