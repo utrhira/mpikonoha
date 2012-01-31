@@ -175,7 +175,7 @@ class TaskFunc {
                 switch(key) {
                 case "size" :
                     if ("OTHERS" in? value) {
-                        value.replace("OTHERS", "0");
+                        value = value.replace("OTHERS", "0");
                         ivalue = (int)eval(value);
                         _param[key] = ivalue;
                     }
