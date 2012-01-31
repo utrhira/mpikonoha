@@ -8,8 +8,8 @@ if (rank != 0) MPI.preventLog();
 
 void bytes_sum(MPIData din, MPIData din_out)
 {
-    if (din.getContentClass() != byte[] ||
-        din_out.getContentClass() != byte[]) {
+    if (din.getDataClass() != byte[] ||
+        din_out.getDataClass() != byte[]) {
         return;
     }
     byte[] bin = (byte[])din;
@@ -28,8 +28,8 @@ int gcd(int x, int y)
 
 void int_gcd(MPIData din, MPIData din_out)
 {
-    if (din.getContentClass() != int[] ||
-        din_out.getContentClass() != int[]) {
+    if (din.getDataClass() != int[] ||
+        din_out.getDataClass() != int[]) {
         return;
     }
     int[] iin = (int[])din;
@@ -42,8 +42,8 @@ void int_gcd(MPIData din, MPIData din_out)
 
 void  float_div(MPIData din, MPIData din_out)
 {
-    if (din.getContentClass() != float[] ||
-        din_out.getContentClass() != float[]) {
+    if (din.getDataClass() != float[] ||
+        din_out.getDataClass() != float[]) {
         return;
     }
     float[] fin = (float[])din;

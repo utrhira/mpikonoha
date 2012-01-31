@@ -45,7 +45,8 @@ include "lib:gluelink";
 @Native int[]   : (MPIData md);
 @Native float[] : (MPIData md);
 @Native byte[]  : (MPIData md);
-@Native Class   MPIData.getContentClass();
+@Native int     MPIData.getDataType();
+@Native Class   MPIData.getDataClass();
 @Native int     MPIData.getSize();
 @Native MPIData MPIData.opADD(int offset);
 
@@ -75,6 +76,7 @@ include "lib:gluelink";
 @Native boolean MPIComm.allGather(MPIData sdata, int scount, MPIData rdata, int rcount);
 @Native boolean MPIComm.allToAll(MPIData sdata, int scount, MPIData rdata, int rcount);
 @Native boolean MPIComm.reduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op, int root_rank);
+@Native boolean MPIComm.scan(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
 @Native boolean MPIComm.allReduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
 @Native boolean MPIComm.reduceScatter(MPIData sdata, MPIData rdata, int[] rcounts, MPIOp op);
 
@@ -168,19 +170,23 @@ class TaskFunc {
                 kv = stt.trim().convert(to:lower).split("=");
                 key = kv[0].trim();
                 value = kv[1].trim();
+                value = value.replace("SIZE", "%d"(ts.numprocs));
+                value = value.replace("RANK", "%d"(ts.myrank));
                 switch(key) {
                 case "size" :
-                    if (value == "other") {
-                        _param[key] = -1;
+                    if ("OTHERS" in? value) {
+                        value.replace("OTHERS", "0");
+                        ivalue = (int)eval(value);
+                        _param[key] = ivalue;
                     }
                     else {
-                        ivalue = (int)value;
+                        ivalue = (int)eval(value);
                         eexit(ivalue > 0 && ivalue <= ts.numprocs, "illegal target task size");
                         _param[key] = ivalue;
                     }
                     break;
                 case "rank" :
-                    ivalue = (int)value;
+                    ivalue = (int)eval(value);
                     eexit(ivalue < ts.numprocs, "specified rank over");
                     _param[key] = ivalue;
                     _ranks << ivalue;
@@ -293,7 +299,7 @@ class TaskScript {
                 if (|tf.ranks| > 0) {
                     treserved = 0;
                     for (r : tf.ranks) {
-                        eexit(!proc_reserved[r], "specified rank duplicated in [%s{#0}]"(tfname));
+                        eexit(!proc_reserved[r], "requested rank duplicated in [%s{#0}]"(tfname));
                         proc_reserved[r] = true;
                         treserved++;
                     }
@@ -306,9 +312,10 @@ class TaskScript {
                 if (!proc_reserved[i]) proc_remain << i;
             }
             for (tf : tf_remain) {
-                tremain = (tf.size > 0) ? (tf.size - |tf.ranks|) : |proc_remain|;
+                tremain = (tf.size > 0) ? (tf.size - |tf.ranks|) : |proc_remain| + (tf.size);
+                eexit(tremain >= 0, "requested task size < 0 int [%s{#0}]"(tfname));
                 for (int i = 0; i < tremain; i++) {
-                    eexit(|proc_remain| > 0, "required task procs > numprocs in [%s{#0}]"(tfname));
+                    eexit(|proc_remain| > 0, "requested task size > numprocs in [%s{#0}]"(tfname));
                     r = proc_remain[0];
                     proc_remain.remove(0);
                     tf.ranks << r;

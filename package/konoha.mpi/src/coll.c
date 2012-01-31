@@ -241,6 +241,30 @@ KMETHOD MPIComm_reduce(CTX ctx, ksfp_t *sfp _RIX)
 }
 
 /* ------------------------------------------------------------------------ */
+//## method Int MPIComm.scan(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
+
+KMETHOD MPIComm_scan(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPIC(comm, sfp[0].o);
+	MPID(sdata, sfp[1].o);
+	MPID(rdata, sfp[2].o);
+	int rcount = Int_to(int, sfp[3]);
+	MPIO(op, sfp[4].o);
+	int ret = 0;
+	MPID_WCHK(rdata);
+	if (rcount == 0) {
+		int size = MPID_SIZE(sdata);
+		MPI_Allreduce(&size, &rcount, 1, MPI_INT, MPI_MIN, MPIC_COMM(comm)); /* get mininum data cont */
+	}
+	int inc;
+	knh_MPIData_expand(ctx, rdata, &rcount, &inc);
+	knh_MPIData_incSize(rdata, inc);
+	MPI_Scan(MPID_ADDR(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIO_OP(op), MPIC_COMM(comm));
+	ret = 1;
+	RETURNb_(ret);
+}
+
+/* ------------------------------------------------------------------------ */
 //## method Int MPIComm.allReduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
 
 KMETHOD MPIComm_allReduce(CTX ctx, ksfp_t *sfp _RIX)

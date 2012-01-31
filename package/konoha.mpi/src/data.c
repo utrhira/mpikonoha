@@ -214,9 +214,18 @@ KMETHOD MPIData_new(CTX ctx, ksfp_t *sfp _RIX)
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Class MPIData.getContentClass();
+//## method int MPIData.getDataType();
 
-KMETHOD MPIData_getContentClass(CTX ctx, ksfp_t *sfp _RIX)
+KMETHOD MPIData_getDataType(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPID(data, sfp[0].o);
+	RETURNi_((kint_t)MPID_TYPE(data));
+}
+
+/* ------------------------------------------------------------------------ */
+//## method Class MPIData.getDataClass();
+
+KMETHOD MPIData_getDataClass(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[0].o);
 	RETURN_(new_Type(ctx, (MPID_TYPE(data) == MPI_CHAR) ? MPID_DCID(data) : O_cid(data->o)));
