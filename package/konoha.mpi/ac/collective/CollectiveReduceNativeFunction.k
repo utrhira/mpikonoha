@@ -44,11 +44,8 @@ void  float_mul(MPIData din, MPIData din_out)
         din_out.getDataClass() != float[]) {
         return;
     }
-    // FIXME: need explicit typecasting
-    float[] fin = (float[])din;
-    float[] fin_out = (float[])din_out;
-    for (int i = 0; i < |fin|; i++) {
-        fin_out[i] = fin[i] * fin_out[i];
+    for (int i = 0; i < |din|; i++) {
+        din_out[i] = din[i] * din_out[i];
     }
 }
 

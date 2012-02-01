@@ -378,12 +378,12 @@ KMETHOD MPIData_set(CTX ctx, ksfp_t *sfp _RIX)
 	if (MPID_CID(data) == CLASS_Array) {
 		kArray *a = data->a;
 		if (MPID_DCID(data) == CLASS_ArrayInt) {
-			kint_t val = O_data(sfp[2].o);
+			kint_t val = Int_to(kint_t, sfp[2]);
 			a->ilist[idx] = val;
 		}
 		//else if (MPID_DCID(data) == CLASS_ArrayFloat) {
 		else if (MPID_TYPE(data) == MPI_DOUBLE) {
-			kfloat_t val = O_data(sfp[2].o);
+			kfloat_t val = Float_to(kfloat_t, sfp[2]);
 			a->flist[idx] = val;
 		}
 		else {
