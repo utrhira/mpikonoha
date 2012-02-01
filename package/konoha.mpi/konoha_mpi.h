@@ -69,13 +69,15 @@ typedef struct {
 		kString *s;
 	};
 	MPI_Datatype type;
-	kclass_t cid;
+	kclass_t cid;  // object external class
+	kclass_t dcid; // internal data class
 	size_t offset;
 } kMPIData;
 
 #define MPID_ADDR(d) knh_MPIData_getAddr(d)
 #define MPID_TYPE(d) ((d)->type)
-#define MPID_DCID(d) ((d)->cid)
+#define MPID_CID(d) ((d)->cid)
+#define MPID_DCID(d) ((d)->dcid)
 #define MPID_POFS(d) ((d)->offset)
 #define MPID_SIZE(d) knh_MPIData_getSize(d)
 #define MPID_WCHK(d) \
@@ -85,6 +87,13 @@ typedef struct {
 					KNH_LDATA(LOG_p("unwritable data", d)));\
 		}\
 	}
+
+#define NTHROW_CAST_MPID(ctx, sfp, data) \
+	KNH_NTHROW2((ctx), (sfp), "Script!!", "invalid type casting", K_FAILED, \
+		KNH_LDATA( \
+		LOG_s("content class", SAFECLASS__(ctx, MPID_CID(data))), \
+		LOG_s("internal class", SAFECLASS__(ctx, MPID_DCID(data))) \
+	));
 
 #define MPID_CCHK(d, c)							\
 	{\

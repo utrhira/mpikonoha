@@ -36,7 +36,7 @@ include "lib:gluelink";
 @Native int     MPIComm.barrier();
 @Native MPIComm MPIComm.create(int[] ranks);
 
-@Native MPIData MPIData.new (byte[] data, Class c);
+@Native MPIData MPIData.new(Class c);
 @Native MPIData : (int i);
 @Native MPIData : (int[] ia);
 @Native MPIData : (float f);
@@ -48,6 +48,8 @@ include "lib:gluelink";
 @Native int     MPIData.getDataType();
 @Native Class   MPIData.getDataClass();
 @Native int     MPIData.getSize();
+@Native dynamic MPIData.get(int n);
+@Native void    MPIData.set(int n, dynamic d);
 @Native MPIData MPIData.opADD(int offset);
 
 @Native boolean MPIRequest.test();
@@ -81,18 +83,12 @@ include "lib:gluelink";
 @Native boolean MPIComm.reduceScatter(MPIData sdata, MPIData rdata, int[] rcounts, MPIOp op);
 
 /* ======================================================================== */
-/* Utility Functions */
+/* Functions depends on another package */
 
 using konoha.io.*;
 
-MPIData : (Object o) {
-    byte[] bt = new byte[0];
-    bt.writeMsgPack(o);
-    return new MPIData(bt, o.class);
-}
-dynamic MPIData.decode(Class c) {
-    return ((byte[])this).readMsgPack(0, 0, c);
-}
+@Native MPIData : (Object o);
+@Native dynamic MPIData.decode();
 
 /* ======================================================================== */
 /* Vertiks */

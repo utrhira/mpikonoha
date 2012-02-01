@@ -32,30 +32,29 @@ void int_gcd(MPIData din, MPIData din_out)
         din_out.getDataClass() != int[]) {
         return;
     }
-    int[] iin = (int[])din;
-    int[] iin_out = (int[])din_out;
-    for (int i = 0; i < |iin|; i++) {
-        int x = iin[i], y = iin_out[i];
-        iin_out[i] = (x > y) ? gcd(x, y) : gcd(y, x);
+    for (int i = 0; i < |din|; i++) {
+        int x = din[i], y = din_out[i];
+        din_out[i] = (x > y) ? gcd(x, y) : gcd(y, x);
     }
 }
 
-void  float_div(MPIData din, MPIData din_out)
+void  float_mul(MPIData din, MPIData din_out)
 {
     if (din.getDataClass() != float[] ||
         din_out.getDataClass() != float[]) {
         return;
     }
+    // FIXME: need explicit typecasting
     float[] fin = (float[])din;
     float[] fin_out = (float[])din_out;
     for (int i = 0; i < |fin|; i++) {
-        fin_out[i] = 1 / (fin[i] + fin_out[i]);
+        fin_out[i] = fin[i] * fin_out[i];
     }
 }
 
 MPIOp op_bsum = new MPIOp(bytes_sum);
 MPIOp op_igcd = new MPIOp(int_gcd);
-MPIOp op_fdiv = new MPIOp(float_div);
+MPIOp op_fmul = new MPIOp(float_mul);
 
 bdata = new byte[0];
 idata = new int[0];
@@ -64,17 +63,17 @@ if (rank == 0) {
     assure "CollectiveReduceNativeFunction" {
         world.reduce((MPIData)(Bytes)"123", (MPIData)bdata, 3, op_bsum, 0);
         world.reduce((MPIData)[1024, 896], (MPIData)idata, 2, op_igcd, 0);
-        world.reduce((MPIData)[0.1, 0.01], (MPIData)fdata, 2, op_fdiv, 0);
+        world.reduce((MPIData)[1.0, 1.0], (MPIData)fdata, 2, op_fmul, 0);
         assert (bdata.decode() == "666");
         assert (idata == [128, 128]);
-        assert (fdata == [1/(1/(0.1 + 0.01) + 0.1), 1/(1/(0.01 + 0.1) + 0.001)]);
+        assert (fdata == [1.0 * 2.0 * 2.0, 1.0 * 0.5 * 0.5]);
     }
 } else if (rank == 1) {
     world.reduce((MPIData)(Bytes)"222", (MPIData)bdata, 3, op_bsum, 0);
     world.reduce((MPIData)[384, 384], (MPIData)idata, 2, op_igcd, 0);
-    world.reduce((MPIData)[0.01, 0.1], (MPIData)fdata, 2, op_fdiv, 0);
+    world.reduce((MPIData)[2.0, 0.5], (MPIData)fdata, 2, op_fmul, 0);
 } else {
     world.reduce((MPIData)(Bytes)"321", (MPIData)bdata, 3, op_bsum, 0);
     world.reduce((MPIData)[896, 1024], (MPIData)idata, 2, op_igcd, 0);
-    world.reduce((MPIData)[0.1, 0.001], (MPIData)fdata, 2, op_fdiv, 0);
+    world.reduce((MPIData)[2.0, 0.5], (MPIData)fdata, 2, op_fmul, 0);
 }

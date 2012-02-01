@@ -3,7 +3,7 @@ using konoha.math.*;
 
 N = (|$script.argv| > 0) ? (int)$script.argv[0] : 256;
 DEBUG = 1
-EPS =    1.0e-18
+EPS = 1.0e-18
 
 MPIComm world;
 int     myid, numprocs;

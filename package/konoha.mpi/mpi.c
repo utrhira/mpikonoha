@@ -81,6 +81,7 @@ static void knh_MPIData_init(CTX ctx, kRawPtr *o)
 	MPID(data, o);
 	data->o = NULL;
 	MPID_TYPE(data) = MPI_BYTE;
+	MPID_CID(data) = CLASS_Object;
 	MPID_DCID(data) = CLASS_Object;
 	MPID_POFS(data) = 0;
 }
@@ -98,7 +99,7 @@ static void knh_MPIData_reftrace(CTX ctx, kRawPtr *p FTRARG)
 static void knh_MPIData_p(CTX ctx, kOutputStream *w, kRawPtr *o, int level)
 {
 	MPID(data, o);
-	ClassTBL(MPID_DCID(data))->cdef->p(ctx, w, data->r, level);
+	ClassTBL(MPID_CID(data))->cdef->p(ctx, w, data->r, level);
 	if (MPID_POFS(data) > 0) knh_printf(ctx, w, "(+%d)offset", MPID_POFS(data));
 }
 

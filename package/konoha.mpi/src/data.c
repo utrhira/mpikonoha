@@ -8,7 +8,8 @@ TYPEMAP Int_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->i = new_Int(ctx, sfp[1].ivalue);
 	MPID_TYPE(data) = MPI_LONG;
-	MPID_DCID(data) = CLASS_Int;
+	MPID_CID(data) = CLASS_Int;
+	MPID_DCID(data) = O_cid(sfp[1].o);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -18,7 +19,8 @@ TYPEMAP int___MPIData(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->a = sfp[1].a;
 	MPID_TYPE(data) = MPI_LONG;
-	MPID_DCID(data) = CLASS_Array;
+	MPID_CID(data) = CLASS_Array;
+	MPID_DCID(data) = O_cid(sfp[1].o);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -28,7 +30,8 @@ TYPEMAP Float_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->f = new_Float_(ctx, CLASS_Float, sfp[1].fvalue);
 	MPID_TYPE(data) = MPI_DOUBLE;
-	MPID_DCID(data) = CLASS_Float;
+	MPID_CID(data) = CLASS_Float;
+	MPID_DCID(data) = O_cid(sfp[1].o);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -38,7 +41,8 @@ TYPEMAP float___MPIData(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->a = sfp[1].a;
 	MPID_TYPE(data) = MPI_DOUBLE;
-	MPID_DCID(data) = CLASS_Array;
+	MPID_CID(data) = CLASS_Array;
+	MPID_DCID(data) = O_cid(sfp[1].o);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -48,7 +52,8 @@ TYPEMAP Bytes_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->ba = sfp[1].ba;
 	MPID_TYPE(data) = MPI_CHAR;
-	MPID_DCID(data) = CLASS_Bytes;
+	MPID_CID(data) = CLASS_Bytes;
+	MPID_DCID(data) = O_cid(sfp[1].o);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -58,7 +63,8 @@ TYPEMAP String_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->s = sfp[1].s;
 	MPID_TYPE(data) = MPI_CHAR;
-	MPID_DCID(data) = CLASS_String;
+	MPID_CID(data) = CLASS_String;
+	MPID_DCID(data) = O_cid(sfp[1].o);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -66,8 +72,8 @@ TYPEMAP String_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 TYPEMAP MPIData_int__(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[1].o);
-	if (MPID_DCID(data) != CLASS_Array || MPID_TYPE(data) != MPI_LONG) {
-		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, KNH_LDATA(LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data)))));
+	if (MPID_CID(data) != CLASS_Array || MPID_DCID(data) != CLASS_ArrayInt) {
+		NTHROW_CAST_MPID(ctx, sfp, data);
 	}
 	RETURN_(data->a);
 }
@@ -75,8 +81,9 @@ TYPEMAP MPIData_int__(CTX ctx, ksfp_t *sfp _RIX)
 TYPEMAP MPIData_float__(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[1].o);
-	if (MPID_DCID(data) != CLASS_Array || MPID_TYPE(data) != MPI_DOUBLE) {
-		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, KNH_LDATA(LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data)))));
+	//if (MPID_CID(data) != CLASS_Array || MPID_DCID(data) != CLASS_ArrayFloat) {
+	if (MPID_CID(data) != CLASS_Array || MPID_TYPE(data) != MPI_DOUBLE) {
+		NTHROW_CAST_MPID(ctx, sfp, data);
 	}
 	RETURN_(data->a);
 }
@@ -84,24 +91,102 @@ TYPEMAP MPIData_float__(CTX ctx, ksfp_t *sfp _RIX)
 TYPEMAP MPIData_Bytes(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[1].o);
-	if (MPID_DCID(data) != CLASS_Bytes || MPID_TYPE(data) != MPI_CHAR) {
-		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, KNH_LDATA(LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data)))));
+	if (MPID_CID(data) != CLASS_Bytes || MPID_DCID(data) != CLASS_Bytes) {
+		NTHROW_CAST_MPID(ctx, sfp, data);
 	}
 	RETURN_(data->ba);
 }
 
 /* ------------------------------------------------------------------------ */
 
+static kMethod* knh_loadMethod(CTX ctx, kclass_t cid, kbytes_t mtdnm)
+{
+	kmethodn_t mn = knh_getmn(ctx, mtdnm, MN_NONAME);
+	return knh_NameSpace_getMethodNULL(ctx, NULL, cid, mn);
+}
+
+static kBytes* knh_MPIData_serialize(CTX ctx, ksfp_t *sfp, kObject* target)
+{
+	size_t init = K_FASTMALLOC_SIZE;
+	kBytes *ba = new_Bytes(ctx, "mpiobj", init);
+	knh_bzero(ba->bu.ubuf, init);
+	ba->dim = new_dim(ctx, init, 1);
+	{
+		kMethod *wmsg = knh_loadMethod(ctx, knh_getcid(ctx, STEXT("Bytes")), STEXT("writeMsgPack"));
+		if (wmsg == NULL) {
+			KNH_NTHROW2(ctx, sfp, "Script!!", "method 'Bytes.writeMsgPack' not found", K_FAILED, KNH_LDATA0);
+		}
+		CLOSURE_start(1);
+		KNH_SETv(ctx, lsfp[K_CALLDELTA+0].o, ba);
+		KNH_SETv(ctx, lsfp[K_CALLDELTA+1].o, target);
+		KNH_SCALL(ctx, lsfp, 0, wmsg, 1);
+		CLOSURE_end();
+	}
+	return ba;
+}
+
+static kObject* knh_MPIData_deserialize(CTX ctx, ksfp_t *sfp, kBytes* target, kclass_t cid)
+{
+	kMethod *rmsg = knh_loadMethod(ctx, knh_getcid(ctx, STEXT("Bytes")), STEXT("readMsgPack"));
+	if (rmsg == NULL) {
+		KNH_NTHROW2(ctx, sfp, "Script!!", "method 'Bytes.readMsgPack' not found", K_FAILED, KNH_LDATA0);
+	}
+	CLOSURE_start(3);
+	KNH_SETv(ctx, lsfp[K_CALLDELTA+0].o, target);
+	lsfp[K_CALLDELTA+1].ivalue = 0;
+	lsfp[K_CALLDELTA+2].ivalue = 0;
+	KNH_SETv(ctx, lsfp[K_CALLDELTA+3].o, new_Type(ctx, cid));
+	KNH_SCALL(ctx, lsfp, 0, rmsg, 3);
+	kObject *obj = lsfp[K_RTNIDX].o;
+	CLOSURE_end();
+	return obj;
+}
+
+TYPEMAP Object_MPIData(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
+	kObject *obj = sfp[1].o;
+	kBytes *serialized = knh_MPIData_serialize(ctx, sfp, obj);
+	if (serialized == NULL) {
+		KNH_NTHROW2(ctx, sfp, "Script!!", "object serialization failed", K_FAILED,
+					KNH_LDATA(LOG_s("class", SAFECLASS__(ctx, O_cid(obj)))));
+	}
+	data->ba = serialized;
+	MPID_TYPE(data) = MPI_CHAR;
+	MPID_CID(data) = CLASS_Bytes;
+	MPID_DCID(data) = O_cid(obj);
+	MPID_POFS(data) = 0;
+	RETURN_(data);
+}
+
+KMETHOD MPIData_decode(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPID(data, sfp[0].o);
+	if (MPID_CID(data) != CLASS_Bytes || MPID_DCID(data) == CLASS_Bytes) {
+		NTHROW_CAST_MPID(ctx, sfp, data);
+	}
+	kclass_t dcid = MPID_DCID(data);
+	kObject *obj = knh_MPIData_deserialize(ctx, sfp, data->ba, dcid);
+	if (obj == NULL) {
+		KNH_NTHROW2(ctx, sfp, "Script!!", "object serialization failed", K_FAILED,
+					KNH_LDATA(LOG_s("class", SAFECLASS__(ctx, dcid))));
+	}
+	RETURN_(obj);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void* knh_MPIData_getAddr(kMPIData *data)
 {
-	switch (MPID_DCID(data)) {
+	switch (MPID_CID(data)) {
 	case CLASS_Int:
 		return &O_data(data->i);
 	case CLASS_Float:
 		return &O_data(data->f);
 	case CLASS_Array:
-		if (MPID_TYPE(data) ==  MPI_LONG)
+		if (MPID_DCID(data) == CLASS_ArrayInt)
 			return data->a->ilist + MPID_POFS(data);
+		//else if (MPID_DCID(data) == CLASS_ArrayFloat)
 		else if (MPID_TYPE(data) == MPI_DOUBLE)
 			return data->a->flist + MPID_POFS(data);
 	case CLASS_Bytes:
@@ -128,7 +213,7 @@ void knh_MPIData_expand(CTX ctx, kMPIData *data, int *count, int *inc)
 		return;
 	}
 	if (new_size > capacity) {
-		switch (MPID_DCID(data)) {
+		switch (MPID_CID(data)) {
 		case CLASS_Bytes: {
 			int exp_size = k_grow(capacity);
 			if (exp_size < new_size) exp_size = k_goodsize(new_size);
@@ -151,7 +236,7 @@ void knh_MPIData_expand(CTX ctx, kMPIData *data, int *count, int *inc)
 
 int knh_MPIData_getSize(kMPIData *data)
 {
-	switch (MPID_DCID(data)) {
+	switch (MPID_CID(data)) {
 	case CLASS_Array:
 		return knh_Array_size(data->a);
 	case CLASS_Bytes:
@@ -166,7 +251,7 @@ int knh_MPIData_getSize(kMPIData *data)
 int knh_MPIData_incSize(kMPIData *data, int count)
 {
 	if (count <= 0) return 0;
-	switch (MPID_DCID(data)) {
+	switch (MPID_CID(data)) {
 	case CLASS_Array: {
 		knh_Array_size(data->a) += count;
 		return count;
@@ -181,11 +266,13 @@ int knh_MPIData_incSize(kMPIData *data, int count)
 
 int knh_MPIData_getCapacity(kMPIData *data)
 {
-	switch (MPID_DCID(data)) {
+	switch (MPID_CID(data)) {
 	case CLASS_Array:
 		return data->a->dim->capacity;
 	case CLASS_Bytes:
 		return data->ba->dim->capacity;
+	default:
+		break;
 	}
 	return -1;
 }
@@ -201,14 +288,19 @@ void  knh_MPIData_checkCount(kMPIData *data, int *count)
 }
 
 /* ------------------------------------------------------------------------ */
-//## method MPIData MPIData.new(byte[] data, Class class);
+//## method MPIData MPIData.new(Class class);
 
 KMETHOD MPIData_new(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[0].o);
-	data->ba = sfp[1].ba;
+	size_t init = K_FASTMALLOC_SIZE;
+	kBytes *ba = new_Bytes(ctx, "mpiobj", init);
+	knh_bzero(ba->bu.ubuf, init);
+	ba->dim = new_dim(ctx, init, 1);
+	data->ba = ba;
 	MPID_TYPE(data) = MPI_CHAR;
-	MPID_DCID(data) = knh_Class_cid(sfp[2].c);
+	MPID_CID(data) = CLASS_Bytes;
+	MPID_DCID(data) = knh_Class_cid(sfp[1].c);
 	MPID_POFS(data) = 0;
 	RETURN_(data);
 }
@@ -228,7 +320,9 @@ KMETHOD MPIData_getDataType(CTX ctx, ksfp_t *sfp _RIX)
 KMETHOD MPIData_getDataClass(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[0].o);
-	RETURN_(new_Type(ctx, (MPID_TYPE(data) == MPI_CHAR) ? MPID_DCID(data) : O_cid(data->o)));
+	kclass_t cid = MPID_CID(data);
+	kclass_t dcid = MPID_DCID(data);
+	RETURN_(new_Type(ctx, (cid == CLASS_Bytes || cid == CLASS_Array) ? dcid : cid));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -241,6 +335,70 @@ KMETHOD MPIData_getSize(CTX ctx, ksfp_t *sfp _RIX)
 }
 
 /* ------------------------------------------------------------------------ */
+//## medhot dynamic MPIData.get(int n);
+
+KMETHOD MPIData_get(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPID(data, sfp[0].o);
+	kObject *ret = UPCAST(data);
+	if (MPID_CID(data) == CLASS_Array) {
+		int idx = Int_to(int, sfp[1]);
+		if (idx < 0) {
+			KNH_NTHROW2(ctx, sfp, "Script!!", "invalid index", K_FAILED, KNH_LDATA(LOG_i("index", idx)));
+		}
+		kArray *a = data->a;
+		if (MPID_DCID(data) == CLASS_ArrayInt) {
+			ret = UPCAST(new_Int(ctx, a->ilist[idx]));
+		}
+		//else if (MPID_DCID(data) == CLASS_ArrayFloat) {
+		else if (MPID_TYPE(data) == MPI_DOUBLE) {
+			ret = UPCAST(new_Float(ctx, a->flist[idx]));
+		}
+		else {
+			// TODO: general Array
+		}
+	}
+	else {
+		// FIXME: index access not allowed for (type of xxx)
+	}
+	RETURN_(ret);
+}
+
+/* ------------------------------------------------------------------------ */
+//## medhot dynamic MPIData.set(int n, dynamic d);
+
+KMETHOD MPIData_set(CTX ctx, ksfp_t *sfp _RIX)
+{
+	MPID(data, sfp[0].o);
+	MPID_WCHK(data); // NTHROW except types of Array or Bytes
+	int idx = Int_to(int, sfp[1]);
+	if (idx < 0) {
+		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid index", K_FAILED, KNH_LDATA(LOG_i("index", idx)));
+	}
+	if (MPID_CID(data) == CLASS_Array) {
+		kArray *a = data->a;
+		if (MPID_DCID(data) == CLASS_ArrayInt) {
+			kint_t val = O_data(sfp[2].o);
+			a->ilist[idx] = val;
+		}
+		//else if (MPID_DCID(data) == CLASS_ArrayFloat) {
+		else if (MPID_TYPE(data) == MPI_DOUBLE) {
+			kfloat_t val = O_data(sfp[2].o);
+			a->flist[idx] = val;
+		}
+		else {
+			// TODO: general Array
+		}
+	}
+	else {
+		kBytes *b = data->ba;
+		// TODO: Bytes
+		(void)b;
+	}
+	RETURNvoid_();
+}
+
+/* ------------------------------------------------------------------------ */
 //## method MPIData MPIData.opADD(int offset);
 
 KMETHOD MPIData_opADD(CTX ctx, ksfp_t *sfp _RIX)
@@ -249,6 +407,7 @@ KMETHOD MPIData_opADD(CTX ctx, ksfp_t *sfp _RIX)
 	MPID(newdata, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	newdata->o = data->o;
 	MPID_TYPE(newdata) = MPID_TYPE(data);
+	MPID_CID(newdata) = MPID_CID(data);
 	MPID_DCID(newdata) = MPID_DCID(data);
 	int ofs = Int_to(int, sfp[1]);
 	if (ofs < 0 || MPID_SIZE(data) < ofs) {

@@ -11,7 +11,8 @@ static kMPIData* new_MPIData_Bytes(CTX ctx, void *vec, int vlen)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->ba = ba;
 	MPID_TYPE(data) = MPI_CHAR;
-	MPID_DCID(data) = CLASS_Bytes;
+	MPID_CID(data) = CLASS_Bytes;
+	MPID_DCID(data) = O_cid(ba);
 	return data;
 }
 
@@ -23,7 +24,9 @@ static kMPIData* new_MPIData_ArrayInt(CTX ctx, void *vec, int vlen)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->a = a;
 	MPID_TYPE(data) = MPI_LONG;
-	MPID_DCID(data) = CLASS_Array;
+	MPID_CID(data) = CLASS_Array;
+	MPID_DCID(data) = O_cid(a);
+	MPID_POFS(data) = 0;
 	return data;
 }
 
@@ -35,7 +38,9 @@ static kMPIData* new_MPIData_ArrayFloat(CTX ctx, void *vec, int vlen)
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->a = a;
 	MPID_TYPE(data) = MPI_DOUBLE;
-	MPID_DCID(data) = CLASS_Array;
+	MPID_CID(data) = CLASS_Array;
+	MPID_DCID(data) = O_cid(a);
+	MPID_POFS(data) = 0;
 	return data;
 }
 
