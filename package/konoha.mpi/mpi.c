@@ -214,6 +214,9 @@ static void knh_MPI_errhandler(MPI_Comm *comm, int *err, ...)
 	}
 }
 
+void knh_MPI_initArrayFuncData(CTX ctx);
+void knh_MPI_initArrayPrintFunc(CTX ctx);
+
 DEFAPI(const knh_PackageDef_t*) init(CTX ctx, knh_LoaderAPI_t *kapi)
 {
 	int init = 0;

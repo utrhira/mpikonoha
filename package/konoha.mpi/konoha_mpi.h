@@ -24,9 +24,6 @@
 #define IS_ArrayFloat(o) (IS_bArray(o) && O_p1(o) == CLASS_Float)
 #endif
 
-void knh_MPI_initArrayFuncData(CTX ctx);
-void knh_MPI_initArrayPrintFunc(CTX ctx);
-
 static inline kBytes* new_B(CTX ctx, const char *name, size_t init)
 {
 	kBytes *ba = new_Bytes(ctx, name, init);

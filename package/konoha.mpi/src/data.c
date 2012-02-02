@@ -82,54 +82,91 @@ static kMethod* knh_loadMethodNULL(CTX ctx, ksfp_t *sfp, kbytes_t clsnm, kbytes_
 	return knh_NameSpace_getMethodNULL(ctx, NULL, cid, mn);
 }
 
-static kBytes* knh_MPIData_serialize(CTX ctx, ksfp_t *sfp, kObject* target)
+static kMPIData* knh_MPIData_serialize(CTX ctx, ksfp_t *sfp, kObject* target)
 {
-	kBytes *ba = new_B(ctx, "mpiobj", K_FASTMALLOC_SIZE);
+	double _begin = MPI_Wtime();
+	const char *objtype = NULL;
+	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	{
-		kMethod *wmsg;
-		if ((wmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("writeMsgPack"))) == NULL)
-			if ((wmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("writeJson"))) == NULL)
-				KNH_NTHROW2(ctx, sfp, "Script!!", "serialize method not found", K_FAILED, KNH_LDATA0);
-		CLOSURE_start(1);
-		KNH_SETv(ctx, lsfp[K_CALLDELTA+0].o, ba);
-		KNH_SETv(ctx, lsfp[K_CALLDELTA+1].o, target);
-		KNH_SCALL(ctx, lsfp, 0, wmsg, 1);
-		CLOSURE_end();
+		kMethod *wmsg = NULL;
+		kBytes *ba = NULL;
+		do {
+			if ((wmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("writeMsgPack"))) != NULL) {
+				ba = new_B(ctx, "mpiobj:msgpack", K_FASTMALLOC_SIZE);
+				break;
+			}
+			if ((wmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("writeJson"))) != NULL) {
+				ba = new_B(ctx, "mpiobj:json", K_FASTMALLOC_SIZE);
+				break;
+			}
+			KNH_NTHROW2(ctx, sfp, "Script!!", "serialize method not found", K_FAILED, KNH_LDATA0);
+		} while(0);
+		objtype = ba->DBG_name;
+		{
+			CLOSURE_start(1);
+			KNH_SETv(ctx, lsfp[K_CALLDELTA+0].o, ba);
+			KNH_SETv(ctx, lsfp[K_CALLDELTA+1].o, target);
+			KNH_SCALL(ctx, lsfp, 0, wmsg, 1);
+			CLOSURE_end();
+		}
+		MPID_INIT(data, ba, MPI_CHAR, CLASS_Bytes, O_cid(target));
 	}
-	return ba;
+	double _finish = MPI_Wtime();
+	double _duration = _finish - _begin;
+	KNH_NTRACE2(ctx, "MPIData_serialize", K_NOTICE,
+				KNH_LDATA(LOG_f("begin", _begin), LOG_f("finish", _finish), LOG_f("duration", _duration),
+						  LOG_s("objtype", objtype), LOG_i("size", MPID_SIZE(data))));
+	return data;
 }
 
-static kObject* knh_MPIData_deserialize(CTX ctx, ksfp_t *sfp, kBytes* target, kclass_t cid)
+static kObject* knh_MPIData_deserialize(CTX ctx, ksfp_t *sfp, kMPIData* target)
 {
-	kObject *obj = NULL;
+	double _begin = MPI_Wtime();
+	const char *objtype = NULL;
+	kObject *obj;
 	{
-		kMethod *rmsg;
-		if ((rmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("readMsgPack"))) == NULL)
-			if ((rmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("readJson"))) == NULL)
-				KNH_NTHROW2(ctx, sfp, "Script!!", "deserialize method not found", K_FAILED, KNH_LDATA0);
-		CLOSURE_start(3);
-		KNH_SETv(lctx, lsfp[K_CALLDELTA+0].o, target);
-		lsfp[K_CALLDELTA+1].ivalue = 0;
-		lsfp[K_CALLDELTA+2].ivalue = 0;
-		KNH_SETv(lctx, lsfp[K_CALLDELTA+3].c, new_Type(lctx, cid));
-		KNH_SCALL(lctx, lsfp, 0, rmsg, 3);
-		obj = lsfp[K_CALLDELTA+K_RTNIDX].o;
-		CLOSURE_end();
+		kclass_t rcid = MPID_DCID(target);
+		obj = KNH_NULVAL(rcid);
+		kMethod *rmsg = NULL;
+		do {
+			if ((rmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("readMsgPack"))) != NULL) {
+				objtype = "mpiobj:msgpack";
+				break;
+			}
+			if ((rmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("readJson"))) != NULL) {
+				objtype = "mpiobj:json";
+				break;
+			}
+			KNH_NTHROW2(ctx, sfp, "Script!!", "deserialize method not found", K_FAILED, KNH_LDATA0);
+		} while(0);
+		{
+			CLOSURE_start(3);
+			KNH_SETv(lctx, lsfp[K_CALLDELTA+0].o, target->ba);
+			lsfp[K_CALLDELTA+1].ivalue = 0;
+			lsfp[K_CALLDELTA+2].ivalue = 0;
+			KNH_SETv(lctx, lsfp[K_CALLDELTA+3].c, new_Type(lctx, rcid));
+			KNH_SCALL(lctx, lsfp, 0, rmsg, 3);
+			obj = lsfp[K_CALLDELTA+K_RTNIDX].o;
+			CLOSURE_end();
+		}
 	}
+	double _finish = MPI_Wtime();
+	double _duration = _finish - _begin;
+	KNH_NTRACE2(ctx, "MPIData_deserialize", K_NOTICE,
+				KNH_LDATA(LOG_f("begin", _begin), LOG_f("finish", _finish), LOG_f("duration", _duration),
+						  LOG_s("objtype", objtype), LOG_i("size", MPID_SIZE(target))));
 	return obj;
 }
 
 TYPEMAP Object_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
-	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	kObject *obj = sfp[1].o;
-	kBytes *serialized = knh_MPIData_serialize(ctx, sfp, obj);
+	kMPIData *serialized = knh_MPIData_serialize(ctx, sfp, obj);
 	if (serialized == NULL) {
 		KNH_NTHROW2(ctx, sfp, "Script!!", "object serialization failed", K_FAILED,
 					KNH_LDATA(LOG_s("class", SAFECLASS__(ctx, O_cid(obj)))));
 	}
-	MPID_INIT(data, serialized, MPI_CHAR, CLASS_Bytes, O_cid(obj));
-	RETURN_(data);
+	RETURN_(serialized);
 }
 
 //## method Tvar MPIData.decode(Class _);
@@ -143,11 +180,11 @@ KMETHOD MPIData_decode(CTX ctx, ksfp_t *sfp _RIX)
 	}
 	kclass_t rcid = knh_Class_cid(sfp[1].c);
 	if (dcid == O_cid(data)) { // IS_MPIData
-		MPID_DCID(data) = dcid = rcid;
+		MPID_DCID(data) = rcid;
 	} else if (dcid != rcid) {
 		THROW_TypeError(ctx, sfp, dcid, rcid);
 	}
-	kObject *obj = knh_MPIData_deserialize(ctx, sfp, data->ba, dcid);
+	kObject *obj = knh_MPIData_deserialize(ctx, sfp, data);
 	if (obj == NULL) {
 		KNH_NTHROW2(ctx, sfp, "Script!!", "object deserialization failed", K_FAILED,
 					KNH_LDATA(LOG_s("class", SAFECLASS__(ctx, dcid))));
