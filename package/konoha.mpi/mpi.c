@@ -79,10 +79,7 @@ DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 static void knh_MPIData_init(CTX ctx, kRawPtr *o)
 {
 	MPID(data, o);
-	data->o = NULL;
-	MPID_TYPE(data) = MPI_BYTE;
-	MPID_CID(data) = CLASS_Object;
-	MPID_DCID(data) = CLASS_Object;
+	MPID_INIT(data, NULL, MPI_BYTE, CLASS_Object, CLASS_Object);
 	MPID_POFS(data) = 0;
 }
 

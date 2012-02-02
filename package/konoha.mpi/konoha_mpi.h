@@ -27,6 +27,14 @@
 void knh_MPI_initArrayFuncData(CTX ctx);
 void knh_MPI_initArrayPrintFunc(CTX ctx);
 
+static inline kBytes* new_B(CTX ctx, const char *name, size_t init)
+{
+	kBytes *ba = new_Bytes(ctx, name, init);
+	knh_bzero(ba->bu.ubuf, init);
+	ba->dim = new_dim(ctx, init, 1);
+	return ba;
+}
+
 /* ------------------------------------------------------------------------ */
 /* MPI Communicator */
 
@@ -80,6 +88,14 @@ typedef struct {
 #define MPID_DCID(d) ((d)->dcid)
 #define MPID_POFS(d) ((d)->offset)
 #define MPID_SIZE(d) knh_MPIData_getSize(d)
+#define MPID_INIT(d, obj, type, cid, dcid) \
+	{ \
+		(d)->o = UPCAST(obj); \
+		MPID_TYPE(d) = (type); \
+		MPID_CID(d) = (cid); \
+		MPID_DCID(d) = (dcid); \
+	}
+
 #define MPID_WCHK(d) \
 	{\
 		if (knh_MPIData_getCapacity(d) == -1) {\

@@ -88,7 +88,7 @@ include "lib:gluelink";
 using konoha.io.*;
 
 @Native MPIData : (Object o);
-@Native dynamic MPIData.decode();
+@Native Tvar MPIData.decode(Class _);
 
 /* ======================================================================== */
 /* Vertiks */
