@@ -86,6 +86,7 @@ include "lib:gluelink";
 /* Functions depends on another package */
 
 using konoha.io.*;
+using konoha.json.*;
 
 @Native MPIData : (Object o);
 @Native Tvar MPIData.decode(Class _);

@@ -75,23 +75,21 @@ TYPEMAP MPIData_Bytes(CTX ctx, ksfp_t *sfp _RIX)
 
 /* ------------------------------------------------------------------------ */
 
-static kMethod* knh_loadMethod(CTX ctx, ksfp_t *sfp, kbytes_t clsnm, kbytes_t mtdnm)
+static kMethod* knh_loadMethodNULL(CTX ctx, ksfp_t *sfp, kbytes_t clsnm, kbytes_t mtdnm)
 {
 	kclass_t cid = knh_getcid(ctx, clsnm);
 	kmethodn_t mn = knh_getmn(ctx, mtdnm, MN_NONAME);
-	kMethod *mtd = knh_NameSpace_getMethodNULL(ctx, NULL, cid, mn);
-	if (mtd == NULL) {
-		KNH_NTHROW2(ctx, sfp, "Script!!", "method not found", K_FAILED,
-					KNH_LDATA(LOG_s("class", clsnm.buf), LOG_s("method", mtdnm.buf)));
-	}
-	return mtd;
+	return knh_NameSpace_getMethodNULL(ctx, NULL, cid, mn);
 }
 
 static kBytes* knh_MPIData_serialize(CTX ctx, ksfp_t *sfp, kObject* target)
 {
 	kBytes *ba = new_B(ctx, "mpiobj", K_FASTMALLOC_SIZE);
 	{
-		kMethod *wmsg = knh_loadMethod(ctx, sfp, STEXT("Bytes"), STEXT("writeMsgPack"));
+		kMethod *wmsg;
+		if ((wmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("writeMsgPack"))) == NULL)
+			if ((wmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("writeJson"))) == NULL)
+				KNH_NTHROW2(ctx, sfp, "Script!!", "serialize method not found", K_FAILED, KNH_LDATA0);
 		CLOSURE_start(1);
 		KNH_SETv(ctx, lsfp[K_CALLDELTA+0].o, ba);
 		KNH_SETv(ctx, lsfp[K_CALLDELTA+1].o, target);
@@ -105,7 +103,10 @@ static kObject* knh_MPIData_deserialize(CTX ctx, ksfp_t *sfp, kBytes* target, kc
 {
 	kObject *obj = NULL;
 	{
-		kMethod *rmsg = knh_loadMethod(ctx, sfp, STEXT("Bytes"), STEXT("readMsgPack"));
+		kMethod *rmsg;
+		if ((rmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("readMsgPack"))) == NULL)
+			if ((rmsg = knh_loadMethodNULL(ctx, sfp, STEXT("Bytes"), STEXT("readJson"))) == NULL)
+				KNH_NTHROW2(ctx, sfp, "Script!!", "deserialize method not found", K_FAILED, KNH_LDATA0);
 		CLOSURE_start(3);
 		KNH_SETv(lctx, lsfp[K_CALLDELTA+0].o, target);
 		lsfp[K_CALLDELTA+1].ivalue = 0;
