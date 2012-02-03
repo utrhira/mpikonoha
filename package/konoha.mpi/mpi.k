@@ -105,6 +105,7 @@ using konoha.sugar.*;
 @Public void    System.e(dynamic d)               { ERR << d << EOL }
 @Public void    System.x(int i, String s)         { if (i == 0) { p(s) } else { e(s) } exit(i) }
 @Public void    System.eexit(boolean b, String s) { if (!b) x(1, "failed to launch: "+ s) }
+@Public void    System.ethrow(boolean b, String s) { if (!b) throw new Script!!(s) }
 
 /* ------------------------------------------------------------------------ */
 // Token @using konoha.sugar
@@ -179,13 +180,13 @@ class TaskFunc {
                     }
                     else {
                         ivalue = (int)eval(value);
-                        eexit(ivalue > 0 && ivalue <= ts.numprocs, "illegal target task size");
+                        ethrow(ivalue > 0 && ivalue <= ts.numprocs, "illegal target task size");
                     }
                     _param[key] = ivalue;
                     break;
                 case "rank" :
                     ivalue = (int)eval(value);
-                    eexit(ivalue < ts.numprocs, "specified rank over");
+                    ethrow(ivalue < ts.numprocs, "specified rank over");
                     _param[key] = ivalue;
                     _ranks << ivalue;
                     break;
@@ -231,9 +232,13 @@ class TaskScript {
     }
 
     void exec() {
-        parse();
-        attach();
-        run();
+        try {
+            parse();
+            attach();
+            run();
+        } catch (Script!! sce) {
+            print "taskscript aborted ...";
+        }
     }
 
     void parse() {
@@ -303,7 +308,7 @@ class TaskScript {
                 if (|tf.ranks| > 0) {
                     treserved = 0;
                     for (r : tf.ranks) {
-                        eexit(!proc_reserved[r], "requested rank duplicated in [%s{#0}]"(tfname));
+                        ethrow(!proc_reserved[r], "requested rank duplicated in [%s{#0}]"(tfname));
                         proc_reserved[r] = true;
                         treserved++;
                     }
@@ -317,9 +322,9 @@ class TaskScript {
             }
             for (tf : tf_remain) {
                 tremain = (tf.size > 0) ? (tf.size - |tf.ranks|) : |proc_remain| + (tf.size);
-                eexit(tremain >= 0, "requested task size < 0 int [%s{#0}]"(tfname));
+                ethrow(tremain >= 0, "requested task size < 0 int [%s{#0}]"(tfname));
                 for (int i = 0; i < tremain; i++) {
-                    eexit(|proc_remain| > 0, "requested task size > numprocs in [%s{#0}]"(tfname));
+                    ethrow(|proc_remain| > 0, "requested task size > numprocs in [%s{#0}]"(tfname));
                     r = proc_remain[0];
                     proc_remain.remove(0);
                     tf.ranks << r;

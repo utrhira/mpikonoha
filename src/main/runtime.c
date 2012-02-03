@@ -799,19 +799,21 @@ static int knh_startMPIScript(CTX ctx, int argc, const char **argv)
 		MPI_Barrier(MPI_COMM_WORLD);
 		kMPITask *task = MPICTX_THEAD(kMPI_global_tctx);
 		kMPIComm *tcomm = MPICTX_TWORLD(kMPI_global_tctx);
-		do {
-			MPIC_INITV(tcomm, MPIT_COMM(task));
-			MPI_Barrier(MPIC_COMM(tcomm));
-			kbytes_t bscript = MPIT_SCRIPT(task);
-// 			fprintf(stderr,
-// 					"--<%d>-------------------------------------------------------------------\n"
-// 					"%s\n"
-// 					"------------------------------------------------------------------------\n", kMPI_worldRank, bscript.text);
-			if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
- 				ret = knh_runMain(ctx, argc, argv);
- 			}
-		} while (MPIT_NEXTV(task) != NULL);
-		MPICTX_TASKS_FREE(kMPI_global_tctx);
+		if (task != NULL) {
+			do {
+				MPIC_INITV(tcomm, MPIT_COMM(task));
+				MPI_Barrier(MPIC_COMM(tcomm));
+				kbytes_t bscript = MPIT_SCRIPT(task);
+// 				fprintf(stderr,
+// 						"--<%d>-------------------------------------------------------------------\n"
+// 						"%s\n"
+// 						"------------------------------------------------------------------------\n", kMPI_worldRank, bscript.text);
+				if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
+					ret = knh_runMain(ctx, argc, argv);
+				}
+			} while (MPIT_NEXTV(task) != NULL);
+			MPICTX_TASKS_FREE(kMPI_global_tctx);
+		}
 		free((void*)tscript);
 	}
 	else {
