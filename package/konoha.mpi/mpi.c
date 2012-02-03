@@ -199,13 +199,11 @@ DEFAPI(void) constMPIRequest(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 /* ======================================================================== */
 /* PackageDef API (init) */
 
-static const struct kcontext_t *kmpi_err_ctx;
-
 static void knh_MPI_errhandler(MPI_Comm *comm, int *err, ...)
 {
 	int ecode = *err;
 	if (ecode != MPI_SUCCESS) {
-		CTX ctx = (CTX)kmpi_err_ctx;
+		CTX ctx = knh_getCurrentContext();
 		char errstr[MPI_MAX_ERROR_STRING] = {0};
 		int errlen = 0;
 		MPI_Error_string(ecode, errstr, &errlen);
@@ -222,7 +220,6 @@ DEFAPI(const knh_PackageDef_t*) init(CTX ctx, knh_LoaderAPI_t *kapi)
 	int init = 0;
 	MPI_Initialized(&init);
 	if (init) {
-		kmpi_err_ctx = ctx;
 		MPI_Errhandler errfn;
 		MPI_Comm_create_errhandler(knh_MPI_errhandler, &errfn);
 		MPI_Errhandler_set(MPI_COMM_WORLD, errfn);

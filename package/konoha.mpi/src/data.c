@@ -179,10 +179,11 @@ KMETHOD MPIData_decode(CTX ctx, ksfp_t *sfp _RIX)
 		NTHROW_CAST_MPID(ctx, sfp, data);
 	}
 	kclass_t rcid = knh_Class_cid(sfp[1].c);
-	if (dcid == O_cid(data)) { // IS_MPIData
-		MPID_DCID(data) = rcid;
-	} else if (dcid != rcid) {
-		THROW_TypeError(ctx, sfp, dcid, rcid);
+	if (dcid != rcid) {
+		if (dcid != O_cid(data)) {
+			THROW_TypeError(ctx, sfp, dcid, rcid);
+		}
+		MPID_DCID(data) = rcid; // IS_MPIData
 	}
 	kObject *obj = knh_MPIData_deserialize(ctx, sfp, data);
 	if (obj == NULL) {
