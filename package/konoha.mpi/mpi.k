@@ -11,9 +11,11 @@ include "lib:gluelink";
 
 @Native @Static void   MPI.preventLog();  // for ac
 @Native @Static Float  MPI.getWtime();    // for MPI_Wtime
-@Native @Static void   MPI.addTaskScript(MPIComm comm, String script);
 @Native @Static String MPI.getTaskScript();
+@Native @Static void   MPI.addTaskScript(MPIComm comm, String script);
 @Native @Static void   MPI.setTaskWorld(MPIComm comm);
+@Native @Static void   MPI.setTaskOut(OutputStream out);
+@Native @Static void   MPI.setTaskErr(OutputStream err);
 
 /* ------------------------------------------------------------------------ */
 /* Array Extra API */
@@ -85,8 +87,8 @@ include "lib:gluelink";
 /* ======================================================================== */
 /* Functions depends on another package */
 
-using konoha.io.*;
-using konoha.json.*;
+using konoha.io.*; // import Bytes.readMsgPack, Bytes.writeMsgPack
+using konoha.json.*; // import Bytes.readJson, Bytes.writeJson
 
 @Native MPIData : (Object o);
 @Native Tvar MPIData.decode(Class _);
@@ -102,7 +104,6 @@ using konoha.sugar.*;
 @Public void    System.p(dynamic d)               { OUT << d << EOL }
 @Public void    System.e(dynamic d)               { ERR << d << EOL }
 @Public void    System.x(int i, String s)         { if (i == 0) { p(s) } else { e(s) } exit(i) }
-@Public void    System.todo(String s, dynamic d)  { OUT << "TODO: " + s; p(d) }
 @Public void    System.eexit(boolean b, String s) { if (!b) x(1, "failed to launch: "+ s) }
 
 /* ------------------------------------------------------------------------ */
@@ -164,23 +165,23 @@ class TaskFunc {
     void evalParam(TaskScript ts) {
         if (|_sparam| > 0) {
             for (stt : _sparam.split(",")) {
-                kv = stt.trim().convert(to:lower).split("=");
-                key = kv[0].trim();
+                kv = stt.split("=");
+                key = kv[0].trim().convert(to:lower);
                 value = kv[1].trim();
                 value = value.replace("SIZE", "%d"(ts.numprocs));
                 value = value.replace("RANK", "%d"(ts.myrank));
+                value = value.replace("TASK", _name);
                 switch(key) {
                 case "size" :
                     if ("OTHERS" in? value) {
                         value = value.replace("OTHERS", "0");
                         ivalue = (int)eval(value);
-                        _param[key] = ivalue;
                     }
                     else {
                         ivalue = (int)eval(value);
                         eexit(ivalue > 0 && ivalue <= ts.numprocs, "illegal target task size");
-                        _param[key] = ivalue;
                     }
+                    _param[key] = ivalue;
                     break;
                 case "rank" :
                     ivalue = (int)eval(value);
@@ -190,8 +191,8 @@ class TaskFunc {
                     break;
                 case "out" :
                 case "err" :
+                    value = value.replace(" ",""); // concat terms
                     _param[key] = value;
-                    todo("specified out/err of task", value);
                     break;
                 default: break;
                 }
@@ -204,6 +205,12 @@ class TaskFunc {
     int getSize() {
         return ("size" in? _param) ? _param["size"] :
                ("rank" in? _param) ? |_ranks| : 1;
+    }
+    String getOut() {
+        return ("out" in? _param) ? _param["out"] : "/dev/stdout";
+    }
+    String getErr() {
+        return ("err" in? _param) ? _param["err"]: "/dev/stderr";
     }
 }
 
@@ -343,11 +350,24 @@ class TaskScript {
             pscript = _script;
             for (tf : tfs) {
                 pcomm = "comm_%s{#0}"("%s"(tf.hashCode()));
+                pout  = "out_%s{#0}"("%s"(tf.hashCode()));
+                perr  = "err_%s{#0}"("%s"(tf.hashCode()));
                 if (pcomm in? comms == false) {
                     phead += "%s{#0} = MPIComm.WORLD.create([%s{#1}]);\n"(pcomm, (String)tf.ranks);
+                    phead += "%s{#0} = new OutputStream(\"%s{#1}\", \"a\");\n"(pout, (String)tf.out);
+                    phead += "%s{#0} = new OutputStream(\"%s{#1}\", \"a\");\n"(perr, (String)tf.err);
                     comms << pcomm;
                 }
-                tscript = "%s{#0}\n{\n    MPI.setTaskWorld(%s{#1});%s{#2}    MPI.setTaskWorld(MPIComm.WORLD);\n}"(tf.sign, pcomm, tf.source);
+                tscript = "%s{#0}\n"(tf.sign);
+                tscript += "{\n";
+                tscript += "    MPI.setTaskWorld(%s{#0});\n"(pcomm);
+                tscript += "    MPI.setTaskOut(%s{#0});\n"(pout);
+                tscript += "    MPI.setTaskErr(%s{#0});\n"(perr);
+                tscript += "    %s{#0}\n"(tf.source);
+                tscript += "    MPI.setTaskWorld();\n";
+                tscript += "    MPI.setTaskOut();\n";
+                tscript += "    MPI.setTaskErr();\n";
+                tscript += "}\n";
                 pscript = pscript.replace("/* %s{#0} */"(tf.id), tscript);
             }
             comm = MPIComm.world.create([i]);

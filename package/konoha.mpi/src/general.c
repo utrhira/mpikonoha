@@ -68,3 +68,25 @@ KMETHOD MPI_setTaskWorld(CTX ctx, ksfp_t *sfp _RIX)
 	MPIC_INITV(MPICTX_TWORLD(kMPI_global_tctx), MPIC_COMM(tworld));
 	RETURNvoid_();
 }
+
+/* ------------------------------------------------------------------------ */
+//## @Native @Static void  MPI.setTaskOut(OutputStream out);
+
+KMETHOD MPI_setTaskOut(CTX ctx, ksfp_t *sfp _RIX)
+{
+	kOutputStream *out = sfp[1].w;
+	knh_OutputStream_flush(ctx, ctx->out);
+	KNH_SETv(ctx, WCTX(ctx)->out, out);
+	RETURNvoid_();
+}
+
+/* ------------------------------------------------------------------------ */
+//## @Native @Static void  MPI.setTaskErr(OutputStream err);
+
+KMETHOD MPI_setTaskErr(CTX ctx, ksfp_t *sfp _RIX)
+{
+	kOutputStream *err = sfp[1].w;
+	knh_OutputStream_flush(ctx, ctx->err);
+	KNH_SETv(ctx, WCTX(ctx)->err, err);
+	RETURNvoid_();
+}

@@ -803,9 +803,10 @@ static int knh_startMPIScript(CTX ctx, int argc, const char **argv)
 			MPIC_INITV(tcomm, MPIT_COMM(task));
 			MPI_Barrier(MPIC_COMM(tcomm));
 			kbytes_t bscript = MPIT_SCRIPT(task);
-//			printf("--<%d>-------------------------------------------------------------------\n"
-// 				   "%s\n"
-// 				   "------------------------------------------------------------------------\n", kMPI_worldRank, bscript.text);
+// 			fprintf(stderr,
+// 					"--<%d>-------------------------------------------------------------------\n"
+// 					"%s\n"
+// 					"------------------------------------------------------------------------\n", kMPI_worldRank, bscript.text);
 			if(knh_startBytesScript(ctx, bscript) == K_CONTINUE) {
  				ret = knh_runMain(ctx, argc, argv);
  			}
