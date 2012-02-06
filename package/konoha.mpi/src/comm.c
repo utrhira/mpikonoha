@@ -1,15 +1,6 @@
 #include "../konoha_mpi.h"
 
 /* ------------------------------------------------------------------------ */
-//## method MPIComm MPIComm.getWorld();
-KMETHOD MPIComm_getWorld(CTX ctx, ksfp_t *sfp _RIX)
-{
-	MPIC(world, new_O(MPIComm, O_cid(sfp[0].o)));
-	MPIC_INITV(world, MPI_COMM_WORLD);
-	RETURN_(world);
-}
-
-/* ------------------------------------------------------------------------ */
 //## method Int MPIComm.getRank();
 KMETHOD MPIComm_getRank(CTX ctx, ksfp_t *sfp _RIX)
 {

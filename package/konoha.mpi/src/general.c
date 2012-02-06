@@ -17,21 +17,166 @@ KMETHOD MPI_getWtime(CTX ctx, ksfp_t *sfp _RIX)
 }
 
 /* ------------------------------------------------------------------------ */
-//## @Static method String MPI.getTaskScript();
+//#ifdef KNH_MPI_VERTIKS
 
-extern kMPITaskContext *kMPI_global_tctx; // defined @src/main/runtime.c
+extern const char* kMPI_argv0;
+extern kMPITaskContext *kMPI_global_tctx;
 
-KMETHOD MPI_getTaskScript(CTX ctx, ksfp_t *sfp _RIX)
+static int bytes_isempty(kbytes_t t)
 {
-	kString *script;
-	if (kMPI_global_tctx != NULL) {
-		kbytes_t bscript = MPICTX_TSCRIPT(kMPI_global_tctx);
-		script = new_String2(ctx, CLASS_String, bscript.text, bscript.len, 0);
+	size_t i;
+	for(i = 0; i < t.len; i++) {
+		if(!isspace(t.utext[i])) return 0;
+	}
+	return 1;
+}
+
+static kline_t Bytes_addQUOTE(CTX ctx, kBytes *ba, kInputStream *in, int quote, kline_t line)
+{
+	int ch, prev = quote;
+	while((ch = knh_InputStream_getc(ctx, in)) != EOF) {
+		if(ch == '\r') continue;
+		if(ch == '\n') line++;
+		knh_Bytes_putc(ctx, ba, ch);
+		if(ch == quote && prev != '\\') {
+			return line;
+		}
+		prev = ch;
+	}
+	return line;
+}
+
+static kline_t Bytes_addCOMMENT(CTX ctx, kBytes *ba, kInputStream *in, kline_t line)
+{
+	int ch, prev = 0, level = 1;
+	while((ch = knh_InputStream_getc(ctx, in)) != EOF) {
+		if(ch == '\r') continue;
+		if(ch == '\n') line++;
+		knh_Bytes_putc(ctx, ba, ch);
+		if(prev == '*' && ch == '/') level--;
+		if(prev == '/' && ch == '*') level++;
+		if(level == 0) return line;
+		prev = ch;
+	}
+	return line;
+}
+
+static kline_t readchunk(CTX ctx, kInputStream *in, kline_t line, kBytes *ba)
+{
+	int ch;
+	int prev = 0, isBLOCK = 0;
+	while((ch = knh_InputStream_getc(ctx, in)) != EOF) {
+		if(ch == '\r') continue;
+		if(ch == '\n') line++;
+		knh_Bytes_putc(ctx, ba, ch);
+		if(prev == '/' && ch == '*') {
+			line = Bytes_addCOMMENT(ctx, ba, in, line);
+			continue;
+		}
+		if(ch == '\'' || ch == '"' || ch == '`') {
+			line = Bytes_addQUOTE(ctx, ba, in, ch, line);
+			continue;
+		}
+		if(isBLOCK != 1 && prev == '\n' && ch == '\n') {
+			break;
+		}
+		if(prev == '{') {
+			isBLOCK = 1;
+		}
+		if(prev == '\n' && ch == '}') {
+			isBLOCK = 0;
+		}
+		prev = ch;
+	}
+	return line;
+}
+
+KMETHOD MPI_vload(CTX ctx, ksfp_t *sfp _RIX)
+{
+	kString *ret = new_String(ctx, "");
+	if (kMPI_argv0 != NULL) {
+		const char *tscript = NULL;
+		size_t tsize = 0;
+		int myrank;
+		MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+		if (myrank == 0/*root*/) {
+			kNameSpace *ns = K_GMANS;
+			kline_t uline = 1;
+			CWB_t cwbbuf, *cwb = CWB_open(ctx, &cwbbuf);
+			knh_buff_addospath(ctx, cwb->ba, cwb->pos, 0, B(kMPI_argv0));
+			FILE *fp = fopen(CWB_totext(ctx, cwb), "r");
+			if(fp != NULL) {
+				kBytes *bscript = new_Bytes(ctx, "bscript", K_PAGESIZE);
+				kuri_t uri = knh_getURI(ctx, CWB_tobytes(cwb));
+				KNH_SETv(ctx, ns->path, new_Path(ctx, knh_buff_newRealPathString(ctx, cwb->ba, cwb->pos)));
+				kInputStream *in = new_InputStream(ctx, new_FILE(ctx, fp, 256), ns->path);
+				ULINE_setURI(uline, uri);
+				{
+					BEGIN_LOCAL(ctx, lsfp, 3);
+					LOCAL_NEW(ctx, lsfp, 0, kBytes*, ba, new_Bytes(ctx, "chunk", K_PAGESIZE));
+					KNH_SETv(ctx, lsfp[1].o, in);
+					kline_t linenum = uline;
+					do {
+						knh_Bytes_clear(ba, 0);
+						if(!io2_isClosed(ctx, in->io2)) {
+							uline = linenum;
+							linenum = readchunk(ctx, in, linenum, ba);
+						}
+						if(!bytes_isempty(ba->bu)) {
+							knh_Bytes_write2(ctx, bscript, ba->bu.buf, BA_size(ba));
+						}
+					} while(BA_size(ba) > 0);
+					KNH_NTRACE2(ctx, "MPI.vload", K_NOTICE, KNH_LDATA(LOG_s("urn", S_totext(in->path->urn))));
+					END_LOCAL(ctx, lsfp);
+				}
+				tscript = strdup(knh_Bytes_ensureZero(ctx, bscript));
+				tsize = strlen(tscript);
+			}
+			else {
+				KNH_NOTE("script not found: %s", kMPI_argv0);
+			}
+			CWB_close(ctx, cwb);
+		}
+		MPI_Bcast((void*)&tsize, 1, MPI_INT, 0/*root*/, MPI_COMM_WORLD);
+		if (tsize > 0) {
+			if (myrank > 0/*not root*/) {
+				tscript = (const char*)malloc(tsize);
+			}
+			MPI_Bcast((void*)&tscript[0], tsize, MPI_CHAR, 0/*root*/, MPI_COMM_WORLD);
+			ret = new_String2(ctx, CLASS_String, tscript, tsize, 0);
+			free((void*)tscript);
+		}
+	}
+	RETURN_(ret);
+}
+
+KMETHOD MPI_vmainloop(CTX ctx, ksfp_t *sfp _RIX)
+{
+	kbool_t ret = 0;
+	MPI_Barrier(MPI_COMM_WORLD);
+	kMPITask *task = MPICTX_THEAD(kMPI_global_tctx);
+	if (task != NULL) {
+		const char procURI[16];
+		int myrank;
+		MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+		snprintf((char*)procURI, sizeof(procURI), "mpiproc<%d>", myrank);
+		do {
+			MPIC_INITV(MPICTX_TWORLD(kMPI_global_tctx), MPIT_COMM(task));
+			MPI_Barrier(MPIT_COMM(task));
+			kbytes_t bscript = MPIT_SCRIPT(task);
+//			fprintf(stderr,
+//					"--<%s>-------------------------------------------------------------------\n"
+//					"%s\n"
+//					"------------------------------------------------------------------------\n", procURI, bscript.text);
+			kInputStream *bin = new_BytesInputStream(ctx, bscript.text, bscript.len);
+			ret = knh_beval(ctx, bin, 1);
+		} while (MPIT_NEXTV(task) != NULL);
+		MPICTX_TASKS_FREE(kMPI_global_tctx);
 	}
 	else {
-		script = (kString*)KNH_NULVAL(CLASS_String);
+		KNH_NOTE("no registered tasks");
 	}
-	RETURN_(script);
+	RETURNb_(ret);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -90,3 +235,5 @@ KMETHOD MPI_setTaskErr(CTX ctx, ksfp_t *sfp _RIX)
 	KNH_SETv(ctx, WCTX(ctx)->err, err);
 	RETURNvoid_();
 }
+
+//#endif /* KNH_MPI_VERTIKS */

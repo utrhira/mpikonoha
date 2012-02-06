@@ -1141,52 +1141,6 @@ static void knh_buff_addStartPath(CTX ctx, kBytes *ba, size_t pos, kbytes_t path
 	knh_buff_addospath(ctx, ba, pos, 0, path);
 }
 
-const char* knh_readAllScript(CTX ctx, const char *path)
-{
-	const char *script = NULL;
-	KONOHA_BEGIN(ctx);
-	kNameSpace *ns = K_GMANS;
-	kline_t uline = 1;
-	CWB_t cwbbuf, *cwb = CWB_open(ctx, &cwbbuf);
-	knh_buff_addStartPath(ctx, cwb->ba, cwb->pos, B(path));
-	FILE *fp = fopen(CWB_totext(ctx, cwb), "r");
-	if(fp != NULL) {
-		kuri_t uri = knh_getURI(ctx, CWB_tobytes(cwb));
-		KNH_SETv(ctx, ns->path, new_Path(ctx, knh_buff_newRealPathString(ctx, cwb->ba, cwb->pos)));
-		kInputStream *in = new_InputStream(ctx, new_FILE(ctx, fp, 256), ns->path);
-		ULINE_setURI(uline, uri);
-		{
-			kstatus_t status = K_BREAK;
-			kBytes*ba = new_Bytes(ctx, "chunk", K_PAGESIZE);
-			kBytes*bscript = new_Bytes(ctx, NULL, K_PAGESIZE);
-			PUSH_GCSTACK(ctx, ba);
-			kline_t linenum = uline;
-			do {
-				knh_Bytes_clear(ba, 0);
-				if(!io2_isClosed(ctx, in->io2)) {
-					status = K_CONTINUE;
-					uline = linenum;
-					linenum = readchunk(ctx, in, linenum, ba);
-				}
-				if(!bytes_isempty(ba->bu)) {
-					knh_Bytes_write(ctx, bscript, ba->bu);
-				}
-			} while(BA_size(ba) > 0 && status == K_CONTINUE);
-			script = knh_Bytes_ensureZero(ctx, bscript);
-			if (strlen(script) > 0) {
-				script = strdup(script); // free @ MPICTX_TASKS_FREE
-			}
-		}
-	}
-	else {
-		KNH_NOTE("script not found: %s", path);
-	}
-	CWB_close(ctx, cwb);
-	knh_stack_clear(ctx, ctx->stack);
-	KONOHA_END(ctx);
-	return script;
-}
-
 kstatus_t knh_startScript(CTX ctx, const char *path)
 {
 	kstatus_t status = K_BREAK;
@@ -1215,22 +1169,6 @@ kstatus_t knh_startScript(CTX ctx, const char *path)
 		}
 		CWB_close(ctx, cwb);
 	}
-	knh_stack_clear(ctx, ctx->stack);
-	KONOHA_END(ctx);
-	return status;
-}
-
-extern const char kMPI_worldURI[16];
-
-kstatus_t knh_startBytesScript(CTX ctx, kbytes_t script)
-{
-	kstatus_t status = K_BREAK;
-	KONOHA_BEGIN(ctx);
-	kline_t uline = 1;
-	kInputStream *in = new_BytesInputStream(ctx, script.text, script.len);
-	kuri_t uri = knh_getURI(ctx, STEXT(kMPI_worldURI));
-	ULINE_setURI(uline, uri);
-	status = knh_InputStream_load(ctx, in, uline);
 	knh_stack_clear(ctx, ctx->stack);
 	KONOHA_END(ctx);
 	return status;

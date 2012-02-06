@@ -166,6 +166,8 @@ typedef struct {
 /* ------------------------------------------------------------------------ */
 /* MPITask Struct */
 
+//#ifdef KNH_MPI_VERTIKS
+
 typedef struct kMPITask kMPITask;
 struct kMPITask {
 	MPI_Comm  comm;
@@ -210,6 +212,8 @@ struct kMPITaskContext {
 			_task = _next; \
 		} \
 	}
+
+//#endif /* KNH_MPI_VERTIKS */
 
 /* ------------------------------------------------------------------------ */
 

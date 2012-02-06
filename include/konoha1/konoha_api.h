@@ -396,7 +396,6 @@ kstatus_t knh_InputStream_load(CTX ctx, kInputStream *in, kline_t uline);
 kstatus_t knh_InputStream_load(CTX ctx, kInputStream *in, kline_t uline);
 kstatus_t knh_load(CTX ctx, kPath *pth);
 kstatus_t knh_startScript(CTX ctx, const char *path);
-kstatus_t knh_startBytesScript(CTX ctx, kbytes_t script);
 kTerm* new_Term(CTX ctx, kterm_t tt);
 kStmtExpr* new_Stmt2(CTX ctx, kterm_t stt, ...);
 void knh_Stmt_swap(CTX ctx, kStmtExpr *stmt, size_t n, size_t m);

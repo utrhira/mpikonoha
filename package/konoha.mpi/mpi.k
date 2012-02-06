@@ -11,7 +11,6 @@ include "lib:gluelink";
 
 @Native @Static void   MPI.preventLog();  // for ac
 @Native @Static Float  MPI.getWtime();    // for MPI_Wtime
-@Native @Static String MPI.getTaskScript();
 @Native @Static void   MPI.addTaskScript(MPIComm comm, String script);
 @Native @Static void   MPI.setTaskWorld(MPIComm comm);
 @Native @Static void   MPI.setTaskOut(OutputStream out);
@@ -31,7 +30,6 @@ include "lib:gluelink";
 /* ------------------------------------------------------------------------ */
 /* MPI-1 Basic API */
 
-@Native MPIComm MPIComm.getWorld();
 @Native int     MPIComm.getRank();
 @Native int     MPIComm.getSize();
 @Native String  MPIComm.getProcessorName();
@@ -96,16 +94,16 @@ using konoha.json.*; // import Bytes.readJson, Bytes.writeJson
 /* ======================================================================== */
 /* Vertiks */
 
+@Native String  MPI.vload();
+@Native boolean MPI.vmainloop();
 using konoha.sugar.*;
 
 /* ------------------------------------------------------------------------ */
 // System
 
-@Public void    System.p(dynamic d)               { OUT << d << EOL }
-@Public void    System.e(dynamic d)               { ERR << d << EOL }
-@Public void    System.x(int i, String s)         { if (i == 0) { p(s) } else { e(s) } exit(i) }
-@Public void    System.eexit(boolean b, String s) { if (!b) x(1, "failed to launch: "+ s) }
-@Public void    System.ethrow(boolean b, String s) { if (!b) throw new Script!!(s) }
+@Public void System.ethrow(boolean b, String s) {
+    if (!b) throw new Script!!(s);
+}
 
 /* ------------------------------------------------------------------------ */
 // Token @using konoha.sugar
@@ -225,24 +223,31 @@ class TaskScript {
     Map<String,TaskFunc[]> tfmap;
 
     TaskScript() {
-        _numprocs = MPIComm.world.size;
-        _myrank = MPIComm.world.rank;
+        _numprocs = MPIComm.WORLD.size;
+        _myrank = MPIComm.WORLD.rank;
         _script = "";
         _tfmap  = {};
     }
 
-    void exec() {
+    int exec() {
+        int ret;
         try {
-            parse();
+            vscript = MPI.vload();
+            parse(vscript);
             attach();
-            run();
+            regist();
+            MPI.vmainloop();
+            ret = 0;
         } catch (Script!! sce) {
+            ERR << sce << EOL;
             print "taskscript aborted ...";
+            ret = 1;
         }
+        return ret;
     }
 
-    void parse() {
-        tokens = Lang.tokenize(MPI.taskScript);
+    void parse(String str) {
+        tokens = Lang.tokenize(str);
         paramf = def(Token t) { return t.text == ")" }
         argsf  = def(Token t) { return (t.text != "{" && t.type != Token.CODE) }
         codef  = def(Token t) { return t.text == "}" }
@@ -333,7 +338,7 @@ class TaskScript {
         }
     }
 
-    void run() {
+    void regist() {
         tf_procs = new TaskFunc[][_numprocs];
         for (int i = 0; i < _numprocs; i++) {
             tf_procs[i] = new TaskFunc[0];
@@ -375,7 +380,7 @@ class TaskScript {
                 tscript += "}\n";
                 pscript = pscript.replace("/* %s{#0} */"(tf.id), tscript);
             }
-            comm = MPIComm.world.create([i]);
+            comm = MPIComm.WORLD.create([i]);
             if (i == _myrank) {
                 myscript = pscript;
                 mycomm = comm;
@@ -383,6 +388,11 @@ class TaskScript {
         }
         MPI.addTaskScript(mycomm, phead + "\n" + myscript);
     }
+}
+
+@Static int MPI.main(String[] args)
+{
+    return new TaskScript().exec();
 }
 
 // EOF
