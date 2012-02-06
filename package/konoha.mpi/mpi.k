@@ -229,21 +229,15 @@ class TaskScript {
         _tfmap  = {};
     }
 
-    int exec() {
-        int ret;
+    void exec(String vscript) {
         try {
-            vscript = MPI.vload();
             parse(vscript);
             attach();
             regist();
-            MPI.vmainloop();
-            ret = 0;
         } catch (Script!! sce) {
             ERR << sce << EOL;
             print "taskscript aborted ...";
-            ret = 1;
         }
-        return ret;
     }
 
     void parse(String str) {
@@ -390,10 +384,12 @@ class TaskScript {
     }
 }
 
-@Static int MPI.main(String[] args)
-{
-    print args;
-    return new TaskScript().exec();
+@Static int MPI.main(String[] args) {
+    vscript = MPI.vload();
+    ts = new TaskScript();
+    ts.exec(vscript);
+    MPI.vmainloop();
+    return 0;
 }
 
 // EOF
