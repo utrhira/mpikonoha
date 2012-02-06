@@ -392,6 +392,7 @@ class TaskScript {
 
 @Static int MPI.main(String[] args)
 {
+    print args;
     return new TaskScript().exec();
 }
 
