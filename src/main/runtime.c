@@ -765,12 +765,9 @@ struct konoha_module_driver konoha_modules[] = {
 /* ------------------------------------------------------------------------ */
 /* [MPI main] */
 
-static int knh_startMPIScript(CTX ctx, int argc, const char **argv)
+static int knh_runMPIMain(CTX ctx, int argc, const char **argv)
 {
 	int ret = 0;
-	kMPI_argv0 = argv[0];
-	knh_loadPackage(ctx, STEXT("konoha.sugar"));
-	knh_loadPackage(ctx, STEXT("konoha.mpi"));
 	KONOHA_BEGIN(ctx);
 	{
 		kclass_t cid = knh_getcid(ctx, STEXT("MPI"));
@@ -820,7 +817,9 @@ int konoha_main(konoha_t konoha, int argc, const char **argv)
 		ret = konoha_shell(ctx, NULL);
 	}
 	else if(isMPIMode) {
-		ret = knh_startMPIScript(ctx, argc, argv);
+		kMPI_argv0 = argv[0];
+		knh_loadPackage(ctx, STEXT("konoha.mpi"));
+		ret = knh_runMPIMain(ctx, argc, argv);
 	}
 	else {
 		if(knh_startScript(ctx, argv[0]) == K_CONTINUE && !knh_isCompileOnly(ctx)) {
