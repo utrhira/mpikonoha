@@ -17,7 +17,11 @@ KMETHOD MPI_getWtime(CTX ctx, ksfp_t *sfp _RIX)
 }
 
 /* ------------------------------------------------------------------------ */
-//#ifdef KNH_MPI_VERTIKS
+
+#ifdef KNH_MPI_VERTIKS
+#if 0
+{
+#endif
 
 extern const char* kMPI_argv0;
 extern kMPITaskContext *kMPI_global_tctx;
@@ -236,4 +240,7 @@ KMETHOD MPI_setTaskErr(CTX ctx, ksfp_t *sfp _RIX)
 	RETURNvoid_();
 }
 
-//#endif /* KNH_MPI_VERTIKS */
+#if 0
+}
+#endif
+#endif /* KNH_MPI_VERTIKS */

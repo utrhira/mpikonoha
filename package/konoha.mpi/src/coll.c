@@ -16,8 +16,7 @@ KMETHOD MPIComm_bcast(CTX ctx, ksfp_t *sfp _RIX)
 			count = MPID_SIZE(data);
 			MPI_Bcast(&count, 1, MPI_INT, root_rank, MPIC_COMM(comm)); /* bcast for buffer_length */
 		}
-		MPI_Bcast(MPID_ADDR(data), count, MPID_TYPE(data), root_rank, MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Bcast(MPID_ADDR(data), count, MPID_TYPE(data), root_rank, MPIC_COMM(comm));
 	} else {
 		MPID_WCHK(data);
 		if (count == 0) {
@@ -26,10 +25,9 @@ KMETHOD MPIComm_bcast(CTX ctx, ksfp_t *sfp _RIX)
 		int inc = 0;
 		knh_MPIData_expand(ctx, data, &count, &inc);
 		knh_MPIData_incSize(data, inc);
-		MPI_Bcast(MPID_ADDR(data), count, MPID_TYPE(data), root_rank, MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Bcast(MPID_ADDR(data), count, MPID_TYPE(data), root_rank, MPIC_COMM(comm));
 	}
-	RETURNb_(ret);
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -58,9 +56,8 @@ KMETHOD MPIComm_scatter(CTX ctx, ksfp_t *sfp _RIX)
 	int inc = 0;
 	knh_MPIData_expand(ctx, rdata, &rcount, &inc);
 	knh_MPIData_incSize(rdata, inc);
-	MPI_Scatter(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), root_rank, MPIC_COMM(comm));
-	ret = 1;
-	RETURNb_(ret);
+	ret = MPI_Scatter(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), root_rank, MPIC_COMM(comm));
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -82,12 +79,10 @@ KMETHOD MPIComm_gather(CTX ctx, ksfp_t *sfp _RIX)
 			int inc, rrcount = rcount * MPIC_SIZE(comm);
 			knh_MPIData_expand(ctx, rdata,  &rrcount, &inc);
 			knh_MPIData_incSize(rdata, inc);
-			MPI_Gather(MPID_ADDR(sdata), scount, MPID_TYPE(sdata),
-					   MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), root_rank, MPIC_COMM(comm));
-			ret = 1;
+			ret = MPI_Gather(MPID_ADDR(sdata), scount, MPID_TYPE(sdata),
+							 MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), root_rank, MPIC_COMM(comm));
 		} else {
-			MPI_Gather(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), NULL, 0, 0, root_rank, MPIC_COMM(comm));
-			ret = 1;
+			ret = MPI_Gather(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), NULL, 0, 0, root_rank, MPIC_COMM(comm));
 		}
 	} else {
 		scount = MPID_SIZE(sdata);
@@ -111,21 +106,19 @@ KMETHOD MPIComm_gather(CTX ctx, ksfp_t *sfp _RIX)
 					rdispls[i] = 0;
 				}
 			}
-			MPI_Gatherv(MPID_ADDR(sdata), scount, MPID_TYPE(sdata),
-						MPID_ADDR(rdata), rcounts, rdispls, MPID_TYPE(rdata), root_rank, MPIC_COMM(comm));
-			ret = 1;
+			ret = MPI_Gatherv(MPID_ADDR(sdata), scount, MPID_TYPE(sdata),
+							  MPID_ADDR(rdata), rcounts, rdispls, MPID_TYPE(rdata), root_rank, MPIC_COMM(comm));
 		}
 		else {
 			MPI_Gather(&scount, 1, MPI_INT, NULL, 0, MPI_INT, root_rank, MPIC_COMM(comm));
-			MPI_Gatherv(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), NULL, NULL, NULL, 0, root_rank, MPIC_COMM(comm));
-			ret = 1;
+			ret = MPI_Gatherv(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), NULL, NULL, NULL, 0, root_rank, MPIC_COMM(comm));
 		}
 	}
-	RETURNb_(ret);
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Int MPIComm.allGather(MPIData sdata, int scount, MPIData rdata, int rcount);
+//## method boolean MPIComm.allGather(MPIData sdata, int scount, MPIData rdata, int rcount);
 
 KMETHOD MPIComm_allGather(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -141,8 +134,7 @@ KMETHOD MPIComm_allGather(CTX ctx, ksfp_t *sfp _RIX)
 		int inc, rrcount = rcount * MPIC_SIZE(comm);
 		knh_MPIData_expand(ctx, rdata, &rrcount, &inc);
 		knh_MPIData_incSize(rdata, inc);
-		MPI_Allgather(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Allgather(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIC_COMM(comm));
 	} else {
 		int rcounts[MPIC_SIZE(comm)];
 		int rdispls[MPIC_SIZE(comm)];
@@ -157,14 +149,13 @@ KMETHOD MPIComm_allGather(CTX ctx, ksfp_t *sfp _RIX)
 		int inc = 0;
 		knh_MPIData_expand(ctx, rdata, &rsum, &inc);
 		knh_MPIData_incSize(rdata, inc);
-		MPI_Allgatherv(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcounts, rdispls, MPID_TYPE(rdata), MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Allgatherv(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcounts, rdispls, MPID_TYPE(rdata), MPIC_COMM(comm));
 	}
-	RETURNb_(ret);
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Int MPIComm.allToAll(MPIData sdata, int scount, MPIData rdata, int rcount);
+//## method boolean MPIComm.allToAll(MPIData sdata, int scount, MPIData rdata, int rcount);
 
 KMETHOD MPIComm_allToAll(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -180,8 +171,8 @@ KMETHOD MPIComm_allToAll(CTX ctx, ksfp_t *sfp _RIX)
 		int inc, rrcount = scount * MPIC_SIZE(comm);
 		knh_MPIData_expand(ctx, rdata, &rrcount, &inc);
 		knh_MPIData_incSize(rdata, inc);
-		MPI_Alltoall(MPID_ADDR(sdata), scount, MPID_TYPE(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Alltoall(MPID_ADDR(sdata), scount, MPID_TYPE(sdata),
+						   MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIC_COMM(comm));
 	} else {
 		scount = MPID_SIZE(sdata);
 		size_t size = MPIC_SIZE(comm);
@@ -204,14 +195,14 @@ KMETHOD MPIComm_allToAll(CTX ctx, ksfp_t *sfp _RIX)
 		int inc = 0;
 		knh_MPIData_expand(ctx, rdata, &rsum, &inc);
 		knh_MPIData_incSize(rdata, inc);
-		MPI_Alltoallv(MPID_ADDR(sdata), scounts, sdispls, MPID_TYPE(sdata), MPID_ADDR(rdata), rcounts, rdispls, MPID_TYPE(rdata), MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Alltoallv(MPID_ADDR(sdata), scounts, sdispls, MPID_TYPE(sdata),
+							MPID_ADDR(rdata), rcounts, rdispls, MPID_TYPE(rdata), MPIC_COMM(comm));
 	}
-	RETURNb_(ret);
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Int MPIComm.reduce(MPIData sdata, MPIData rdata, int count, MPIOp op, int root_rank);
+//## method boolean MPIComm.reduce(MPIData sdata, MPIData rdata, int count, MPIOp op, int root_rank);
 
 KMETHOD MPIComm_reduce(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -231,17 +222,15 @@ KMETHOD MPIComm_reduce(CTX ctx, ksfp_t *sfp _RIX)
 		int inc = 0;
 		knh_MPIData_expand(ctx, rdata, &count, &inc);
 		knh_MPIData_incSize(rdata, inc);
-		MPI_Reduce(MPID_ADDR(sdata), MPID_ADDR(rdata), count, MPID_TYPE(sdata), MPIO_OP(op), root_rank, MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Reduce(MPID_ADDR(sdata), MPID_ADDR(rdata), count, MPID_TYPE(sdata), MPIO_OP(op), root_rank, MPIC_COMM(comm));
 	} else {
-		MPI_Reduce(MPID_ADDR(sdata), NULL, count, MPID_TYPE(sdata), MPIO_OP(op), root_rank, MPIC_COMM(comm));
-		ret = 1;
+		ret = MPI_Reduce(MPID_ADDR(sdata), NULL, count, MPID_TYPE(sdata), MPIO_OP(op), root_rank, MPIC_COMM(comm));
 	}
-	RETURNb_(ret);
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Int MPIComm.scan(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
+//## method boolean MPIComm.scan(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
 
 KMETHOD MPIComm_scan(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -259,13 +248,12 @@ KMETHOD MPIComm_scan(CTX ctx, ksfp_t *sfp _RIX)
 	int inc;
 	knh_MPIData_expand(ctx, rdata, &rcount, &inc);
 	knh_MPIData_incSize(rdata, inc);
-	MPI_Scan(MPID_ADDR(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIO_OP(op), MPIC_COMM(comm));
-	ret = 1;
-	RETURNb_(ret);
+	ret = MPI_Scan(MPID_ADDR(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIO_OP(op), MPIC_COMM(comm));
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Int MPIComm.allReduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
+//## method boolean MPIComm.allReduce(MPIData sdata, MPIData rdata, int rcount, MPIOp op);
 
 KMETHOD MPIComm_allReduce(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -283,13 +271,12 @@ KMETHOD MPIComm_allReduce(CTX ctx, ksfp_t *sfp _RIX)
 	int inc;
 	knh_MPIData_expand(ctx, rdata, &rcount, &inc);
 	knh_MPIData_incSize(rdata, inc);
-	MPI_Allreduce(MPID_ADDR(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIO_OP(op), MPIC_COMM(comm));
-	ret = 1;
-	RETURNb_(ret);
+	ret = MPI_Allreduce(MPID_ADDR(sdata), MPID_ADDR(rdata), rcount, MPID_TYPE(rdata), MPIO_OP(op), MPIC_COMM(comm));
+	RETURNb_(ret == MPI_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
-//## method Int MPIComm.reduceScatter(MPIData sdata, MPIData rdata, int[] rcounts, MPIOp op);
+//## method boolean MPIComm.reduceScatter(MPIData sdata, MPIData rdata, int[] rcounts, MPIOp op);
 
 KMETHOD MPIComm_reduceScatter(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -327,7 +314,6 @@ KMETHOD MPIComm_reduceScatter(CTX ctx, ksfp_t *sfp _RIX)
 	int inc;
 	knh_MPIData_expand(ctx, rdata, &rcount, &inc);
 	knh_MPIData_incSize(rdata, inc);
-	MPI_Reduce_scatter(MPID_ADDR(sdata), MPID_ADDR(rdata), &rcounts[0], MPID_TYPE(sdata), MPIO_OP(op), MPIC_COMM(comm));
-	ret = 1;
-	RETURNb_(ret);
+	ret = MPI_Reduce_scatter(MPID_ADDR(sdata), MPID_ADDR(rdata), &rcounts[0], MPID_TYPE(sdata), MPIO_OP(op), MPIC_COMM(comm));
+	RETURNb_(ret == MPI_SUCCESS);
 }

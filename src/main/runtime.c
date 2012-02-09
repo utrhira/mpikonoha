@@ -763,35 +763,6 @@ struct konoha_module_driver konoha_modules[] = {
 #endif
 
 /* ------------------------------------------------------------------------ */
-/* [MPI main] */
-
-static int knh_runMPIMain(CTX ctx, int argc, const char **argv)
-{
-	int ret = 0;
-	KONOHA_BEGIN(ctx);
-	{
-		kclass_t cid = knh_getcid(ctx, STEXT("MPI"));
-		kMethod *mtd = knh_NameSpace_getMethodNULL(ctx, NULL, cid, MN_main);
-		if(mtd != NULL) {
-			int thisidx = 1 + K_CALLDELTA;
-			BEGIN_LOCAL(ctx, lsfp, 5);
-			lsfp[1].ivalue = 0;
-			lsfp[thisidx+K_PCIDX].pc = NULL;
-			klr_setmtdNC(ctx,lsfp[thisidx+K_MTDIDX], mtd);
-			KNH_SETv(ctx, lsfp[thisidx].o, ctx->script);
-			KNH_SETv(ctx, lsfp[thisidx+1].o, knh_getPropertyNULL(ctx, STEXT("script.argv")));
-			klr_setesp(ctx, lsfp + thisidx+2);
-			if(knh_VirtualMachine_launch(ctx, lsfp + thisidx)) {
-				ret = (int)lsfp[1].ivalue;
-			}
-			END_LOCAL(ctx, lsfp);
-		}
-	}
-	KONOHA_END(ctx);
-	return ret;
-}
-
-/* ------------------------------------------------------------------------ */
 
 int konoha_main(konoha_t konoha, int argc, const char **argv)
 {
@@ -819,7 +790,8 @@ int konoha_main(konoha_t konoha, int argc, const char **argv)
 	else if(isMPIMode) {
 		kMPI_argv0 = argv[0];
 		knh_loadPackage(ctx, STEXT("konoha.mpi"));
-		ret = knh_runMPIMain(ctx, argc, argv);
+		knh_eval(ctx, "using konoha.mpi.*; int main(String[] args) { new TaskScript().exec(MPI.vload()); MPI.vmainloop(); return 0 }", 1, NULL);
+		ret = knh_runMain(ctx, argc, argv);
 	}
 	else {
 		if(knh_startScript(ctx, argv[0]) == K_CONTINUE && !knh_isCompileOnly(ctx)) {

@@ -52,10 +52,10 @@ KMETHOD MPIComm_create(CTX ctx, ksfp_t *sfp _RIX)
 			MPI_Comm_create(MPIC_COMM(comm), newg, &MPIC_COMM(newc));
 			MPIC_INITV(newc, MPIC_COMM(newc));
 			MPIC_PROC(newc) = strdup(MPIC_PROC(comm)); // to be free
-			// TODO: Groups should be free ?
+			MPI_Group_free(&newg);
 		}
 		else {
-			//FATAL ERROR!!
+			KNH_NTHROW2(ctx, sfp, "Script!!", "invalid rank assigned", K_FAILED, KNH_LDATA0);
 		}
 	}
 	RETURN_(newc);

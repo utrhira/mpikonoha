@@ -1,7 +1,7 @@
 #include "../konoha_mpi.h"
 
 /* ------------------------------------------------------------------------ */
-//## method boolean MPIComm.send(MPIData sdata, int count, int dest, int tag);
+//## method boolean MPIComm.send(MPIData sdata, int count, int dest_rank, int tag);
 
 KMETHOD MPIComm_send(CTX ctx, ksfp_t *sfp _RIX)
 {
@@ -47,7 +47,6 @@ KMETHOD MPIComm_recv(CTX ctx, ksfp_t *sfp _RIX)
 		tag = MPIS_TAG(stat);
 	} else {
 		KNH_NTHROW2(ctx, sfp, "Script!!", "MPI_Probe failed", K_FAILED, KNH_LDATA(LOG_i("source rank", src_rank), LOG_i("message tag", tag)));
-		count = 0;
 	}
 	int inc = 0;
 	knh_MPIData_expand(ctx, rdata, &count, &inc);
@@ -85,7 +84,7 @@ KMETHOD MPIComm_sendrecv(CTX ctx, ksfp_t *sfp _RIX)
 		int rrcount = 0;
 		MPI_Sendrecv(&scount, 1, MPI_INT, dest_rank, stag, &rrcount, 1, MPI_INT, src_rank, rtag, MPIC_COMM(comm), &stat);
 		if (rcount > rrcount) {
-			KNH_NOTE("requested: %d > recieved %d", rcount, rrcount);
+			KNH_NOTE("assigned count is greater than recieved (%d > %d): use recieved count", rcount, rrcount);
 			rcount = rrcount;
 		}
 	}
@@ -153,8 +152,10 @@ KMETHOD MPIComm_iRecv(CTX ctx, ksfp_t *sfp _RIX)
 			KNH_NOTE("requested: %d > recieved %d", count, rcount);
 			count = rcount;
 		}
+	} else if (count > 0) {
+		KNH_NOTE("MPI_Iprobe failed: cancel confirming number of count");
 	} else {
-		// TODO: cancel MPI_Irecv if no message recieved
+		KNH_NTHROW2(ctx, sfp, "Script!!", "MPI_Irecv: number of count is zero", K_FAILED, KNH_LDATA0);
 	}
 	int inc = 0;
 	knh_MPIData_expand(ctx, rdata, &count, &inc);

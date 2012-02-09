@@ -96,14 +96,8 @@ using konoha.json.*; // import Bytes.readJson, Bytes.writeJson
 
 @Native String  MPI.vload();
 @Native boolean MPI.vmainloop();
+
 using konoha.sugar.*;
-
-/* ------------------------------------------------------------------------ */
-// System
-
-@Public void System.ethrow(boolean b, String s) {
-    if (!b) throw new Script!!(s);
-}
 
 /* ------------------------------------------------------------------------ */
 // Token @using konoha.sugar
@@ -141,6 +135,13 @@ String : (Array<int> ia) {
         if (|ia| > 1) for (i : ia[1 to -1]) { ret += ", " + i }
     }
     return ret;
+}
+
+/* ------------------------------------------------------------------------ */
+// System
+
+@Public void System.ethrow(boolean b, String s) {
+    if (!b) throw new Script!!(s);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -382,14 +383,6 @@ class TaskScript {
         }
         MPI.addTaskScript(mycomm, phead + "\n" + myscript);
     }
-}
-
-@Static int MPI.main(String[] args) {
-    vscript = MPI.vload();
-    ts = new TaskScript();
-    ts.exec(vscript);
-    MPI.vmainloop();
-    return 0;
 }
 
 // EOF

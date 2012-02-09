@@ -163,10 +163,13 @@ typedef struct {
 #define KNH_MPI_OP_IS_NULL(op) (MPIO_OP(op) == 0)
 #define MPIO(v, op) kMPIOp *v = (kMPIOp*)op
 
+#ifdef KNH_MPI_VERTIKS
+#if 0
+{
+#endif
+
 /* ------------------------------------------------------------------------ */
 /* MPITask Struct */
-
-//#ifdef KNH_MPI_VERTIKS
 
 typedef struct kMPITask kMPITask;
 struct kMPITask {
@@ -213,7 +216,10 @@ struct kMPITaskContext {
 		} \
 	}
 
-//#endif /* KNH_MPI_VERTIKS */
+#if 0
+}
+#endif
+#endif /* KNH_MPI_VERTIKS */
 
 /* ------------------------------------------------------------------------ */
 
