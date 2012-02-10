@@ -763,8 +763,6 @@ struct konoha_module_driver konoha_modules[] = {
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #endif
 
-/* ------------------------------------------------------------------------ */
-
 int konoha_main(konoha_t konoha, int argc, const char **argv)
 {
 	CTX ctx = (CTX)konoha;
