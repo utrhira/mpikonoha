@@ -41,7 +41,7 @@ if(MPI_LIBRARIES)
     install(TARGETS mpikonoha RUNTIME DESTINATION bin)
 
     # -- install konoha.mpi package
-    add_definitions(-D_SETUP)
+    add_definitions(-D_SETUP -DKNH_MPI_VERTIKS)
     add_library(${PACKAGE_NAME} SHARED ${PACKAGE_SOURCE_CODE})
     set_target_properties(${PACKAGE_NAME} PROPERTIES PREFIX "")
     target_link_libraries(${PACKAGE_NAME} konoha ${MPI_LIBRARIES})

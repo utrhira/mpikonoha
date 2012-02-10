@@ -381,6 +381,18 @@ endif(MINGW)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake 
 		${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
+#
+# mpikonoha configuration
+# --> require MPI module
+# ----> use -DMPI_BASE_DIR=/path/to/mpibase for specifying target lib.
+#
+find_package(MPI REQUIRED)
+set(CMAKE_COMPILE_FLAGS ${CMAKE_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
+set(CMAKE_LINK_FLAGS    ${CMAKE_LINK_FLAGS}    ${MPI_LINK_FLAGS})
+include_directories(${MPI_INCLUDE_PATH})
+set(ExtraLibs ${ExtraLibs} ${MPI_LIBRARIES})
+#
+
 add_library(konoha SHARED ${KONOHA_SRC})
 target_link_libraries(konoha ${ExtraLibs})
 set_target_properties(konoha PROPERTIES VERSION ${PACKAGE_VERSION} SOVERSION ${SO_VERSION})

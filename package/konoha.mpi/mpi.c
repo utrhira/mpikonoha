@@ -53,6 +53,10 @@ DEFAPI(void) defMPIComm(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 	cdef->free = knh_MPIComm_free;
 }
 
+#ifdef KNH_MPI_VERTIKS
+kMPITaskContext *kMPI_global_tctx;
+#endif
+
 DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 {
 	int init = 0;
@@ -62,6 +66,14 @@ DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 		MPIC_INITV(world, MPI_COMM_WORLD);
 		knh_addClassConst(ctx, cid, new_String(ctx, "WORLD"), (kObject*)world);
 		knh_setClassDefaultValue(ctx, cid, world, NULL);
+#ifdef KNH_MPI_VERTIKS
+		{
+			MPIC(tworld, new_O(MPIComm, cid));
+			MPIC_INITV(tworld, MPI_COMM_WORLD);
+			knh_addClassConst(ctx, cid, new_String(ctx, "TWORLD"), (kObject*)tworld);
+			MPICTX_TWORLD(kMPI_global_tctx) = tworld; // only used by mpikonoha
+		}
+#endif
 	}
 }
 
@@ -187,7 +199,6 @@ DEFAPI(void) constMPIRequest(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 	/* dummy */;
 }
 
-
 /* ======================================================================== */
 /* PackageDef API (init) */
 
@@ -220,6 +231,12 @@ DEFAPI(const knh_PackageDef_t*) init(CTX ctx, knh_LoaderAPI_t *kapi)
 	}
 	knh_MPI_initArrayFuncData(ctx);
 	knh_MPI_initArrayPrintFunc(ctx);
+#ifdef KNH_MPI_VERTIKS
+	{
+		static kMPITaskContext _tctx;
+		kMPI_global_tctx = &_tctx;
+	}
+#endif
 	kapi->setPackageProperty(ctx, "name", "mpi");
 	kapi->setPackageProperty(ctx, "version", "1.0");
 	RETURN_PKGINFO("konoha.mpi");

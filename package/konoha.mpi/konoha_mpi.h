@@ -163,6 +163,64 @@ typedef struct {
 #define KNH_MPI_OP_IS_NULL(op) (MPIO_OP(op) == 0)
 #define MPIO(v, op) kMPIOp *v = (kMPIOp*)op
 
+#ifdef KNH_MPI_VERTIKS
+#if 0
+{
+#endif
+
+/* ------------------------------------------------------------------------ */
+/* MPITask Struct */
+
+typedef struct kMPITask kMPITask;
+struct kMPITask {
+	MPI_Comm  comm;
+	kbytes_t  script;
+	kMPITask *next;
+};
+
+#define MPIT_COMM(o) (o)->comm
+#define MPIT_NEXT(o) (o)->next
+#define MPIT_SCRIPT(o) (o)->script
+#define MPIT_NEXTV(v) (v = MPIT_NEXT(v))
+#define MPIT_INITV(o, c, t, s) \
+	{ \
+		MPIT_COMM(o) = (c); \
+		MPIT_SCRIPT(o) = new_bytes2((t), (s)); \
+		MPIT_NEXT(o) = NULL; \
+	}
+
+#define MPIT_MALLOC() (kMPITask*)malloc(sizeof(kMPITask))
+#define MPIT_FREE(o) \
+	{ \
+		free((void*)(MPIT_SCRIPT(o).buf)); \
+		free((void*)o); \
+	}
+
+typedef struct kMPITaskContext kMPITaskContext;
+struct kMPITaskContext {
+	kMPIComm *kworld;
+	kbytes_t  taskscript;
+	kMPITask *tasks;
+};
+
+#define MPICTX_THEAD(o) (o)->tasks
+#define MPICTX_TSCRIPT(o) (o)->taskscript
+#define MPICTX_TWORLD(o) (o)->kworld
+#define MPICTX_TASKS_FREE(o) \
+	{ \
+		kMPITask *_next, *_task = MPICTX_THEAD(o); \
+		while (_task != NULL) { \
+			_next = MPIT_NEXT(_task); \
+			MPIT_FREE(_task); \
+			_task = _next; \
+		} \
+	}
+
+#if 0
+}
+#endif
+#endif /* KNH_MPI_VERTIKS */
+
 /* ------------------------------------------------------------------------ */
 
 #endif /* KNH_INCLUDE_MPI */

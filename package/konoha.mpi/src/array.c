@@ -268,7 +268,7 @@ void knh_MPI_initArrayPrintFunc(CTX ctx)
 {
 	const knh_ClassTBL_t* tbl = ClassTBL(CLASS_Array);
 	kclassdef_t *ArrayDef = (kclassdef_t*)tbl->cdef;
-	//ArrayDef->p = knh_MPI_Array_p; // const if original : modified @ mpikonoha
+	ArrayDef->p = knh_MPI_Array_p; // const if original : modified @ mpikonoha
 }
 
 /* ------------------------------------------------------------------------ */

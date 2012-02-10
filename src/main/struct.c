@@ -1352,7 +1352,7 @@ static void Array_wdata(CTX ctx, kRawPtr *o, void *pkr, const knh_PackSPI_t *pac
 	packspi->pack_endarray(ctx, pkr);
 }
 
-static const kclassdef_t ArrayDef = {
+static kclassdef_t ArrayDef = { // modified @ konoha.mpi/src/array.c:initArrayPrintFunc
 	Array_init, Array_initcopy, Array_reftrace, Array_free,
 	DEFAULT_checkin, DEFAULT_checkout, Array_compareTo, Array_p,
 	DEFAULT_getkey, DEFAULT_hashCode, DEFAULT_0, DEFAULT_1,

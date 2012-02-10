@@ -187,6 +187,30 @@ static void opt_help(CTX ctx, int mode, const char *optstr)
 }
 
 /* ----------------------------------------------------------------------- */
+/* [MPI] */
+
+#include "mpi.h"
+
+static kbool_t isMPIMode = 0;
+const char* kMPI_argv0 = NULL;
+
+static void opt_vertiks(CTX ctx, int mode, const char *optstr)
+{
+	int initialized, rank;
+	MPI_Initialized(&initialized);
+	if(initialized) {
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		if (rank >= 0) {
+			isMPIMode = 1;
+		} else {
+			KNH_NOTE("only one process is running: option(--vertiks) ignored");
+		}
+	} else {
+		KNH_NOTE("process isn't initialized for MPI");
+	}
+}
+
+/* ----------------------------------------------------------------------- */
 
 typedef void (*knh_Fsetopt)(CTX, int, const char *);
 
@@ -226,6 +250,7 @@ static knh_optdata_t optdata[] = {
 	{OPT_("--enforce-security"), OPT_STRING, opt_dummy},
 	{OPT_("--logcached"), OPT_STRING, opt_dummy},
 	{OPT_("-V"), OPT_NUMBER, opt_version},
+	{OPT_("--vertiks"), OPT_EMPTY, opt_vertiks},
 	{OPT_("--version"), OPT_NUMBER, opt_version},
 	{NULL, 0, OPT_EMPTY, NULL}, // END
 };
@@ -760,6 +785,12 @@ int konoha_main(konoha_t konoha, int argc, const char **argv)
 	knh_parsearg(ctx, argc, argv);
 	if(argc == 0) {
 		ret = konoha_shell(ctx, NULL);
+	}
+	else if(isMPIMode) {
+		kMPI_argv0 = argv[0];
+		knh_loadPackage(ctx, STEXT("konoha.mpi"));
+		knh_eval(ctx, "using konoha.mpi.*; int main(String[] args) { new TaskScript().exec(MPI.vload()); MPI.vmainloop(); return 0 }", 1, NULL);
+		ret = knh_runMain(ctx, argc, argv);
 	}
 	else {
 		if(knh_startScript(ctx, argv[0]) == K_CONTINUE && !knh_isCompileOnly(ctx)) {
