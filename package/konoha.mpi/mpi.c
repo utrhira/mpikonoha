@@ -21,19 +21,6 @@ DEFAPI(void) constMPI(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 }
 
 /* ------------------------------------------------------------------------ */
-/* class MPI */
-
-DEFAPI(void) defMPI(CTX ctx, kclass_t cid, kclassdef_t *cdef)
-{
-	cdef->name = "MPI";
-}
-
-DEFAPI(void) constMPI(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
-{
-	/* dummy */;
-}
-
-/* ------------------------------------------------------------------------ */
 /* class MPIComm */
 
 static void knh_MPIComm_init(CTX ctx, kRawPtr *o)
