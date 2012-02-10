@@ -16,15 +16,14 @@ KMETHOD MPI_getWtime(CTX ctx, ksfp_t *sfp _RIX)
 	RETURNf_(MPI_Wtime());
 }
 
-/* ------------------------------------------------------------------------ */
-
 #ifdef KNH_MPI_VERTIKS
 #if 0
 {
 #endif
 
 extern const char* kMPI_argv0;
-extern kMPITaskContext *kMPI_global_tctx;
+static kMPITaskContext _tctx;
+kMPITaskContext *kMPI_global_tctx = &_tctx;
 
 static int bytes_isempty(kbytes_t t)
 {
@@ -157,23 +156,34 @@ KMETHOD MPI_vload(CTX ctx, ksfp_t *sfp _RIX)
 KMETHOD MPI_vmainloop(CTX ctx, ksfp_t *sfp _RIX)
 {
 	kbool_t ret = 0;
+	{
+		kclass_t comm_cid = knh_getcid(ctx, STEXT("MPIComm"));
+		MPIC(tworld, new_O(MPIComm, comm_cid));
+		MPIC_INITV(tworld, MPI_COMM_WORLD);
+		knh_addClassConst(ctx, comm_cid, new_String(ctx, "TWORLD"), (kObject*)tworld);
+		MPICTX_TWORLD(kMPI_global_tctx) = tworld;
+	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	kMPITask *task = MPICTX_THEAD(kMPI_global_tctx);
 	if (task != NULL) {
-		const char procURI[16];
 		int myrank;
 		MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-		snprintf((char*)procURI, sizeof(procURI), "mpiproc<%d>", myrank);
 		do {
 			MPIC_INITV(MPICTX_TWORLD(kMPI_global_tctx), MPIT_COMM(task));
 			MPI_Barrier(MPIT_COMM(task));
 			kbytes_t bscript = MPIT_SCRIPT(task);
 //			fprintf(stderr,
-//					"--<%s>-------------------------------------------------------------------\n"
+//					"--<rank:%d>-------------------------------------------------------------------\n"
 //					"%s\n"
-//					"------------------------------------------------------------------------\n", procURI, bscript.text);
+//					"------------------------------------------------------------------------------\n", myrank, bscript.text);
+			double _begin = MPI_Wtime();
 			kInputStream *bin = new_BytesInputStream(ctx, bscript.text, bscript.len);
 			ret = knh_beval(ctx, bin, 1);
+			double _finish = MPI_Wtime();
+			double _duration = _finish - _begin;
+			KNH_NTRACE2(ctx, "Vertiks:eval", K_NOTICE,
+						KNH_LDATA(LOG_f("begin", _begin), LOG_f("finish", _finish),
+								  LOG_f("duration", _duration), LOG_i("myrank", myrank)));
 		} while (MPIT_NEXTV(task) != NULL);
 		MPICTX_TASKS_FREE(kMPI_global_tctx);
 	}
