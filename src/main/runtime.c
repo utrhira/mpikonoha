@@ -189,6 +189,8 @@ static void opt_help(CTX ctx, int mode, const char *optstr)
 /* ----------------------------------------------------------------------- */
 /* [MPI] */
 
+#include "mpi.h"
+
 static kbool_t isMPIMode = 0;
 const char* kMPI_argv0 = NULL;
 

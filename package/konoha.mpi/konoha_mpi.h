@@ -108,7 +108,7 @@ typedef struct {
 		LOG_s("internal class", SAFECLASS__(ctx, MPID_DCID(data))) \
 	));
 
-#define MPID_CCHK(d, c)							\
+#define MPID_CCHK(d, c) \
 	{\
 		int psize = MPID_SIZE(d) - MPID_POFS(d);\
 		if (c > psize || c <= 0) c = psize;\
