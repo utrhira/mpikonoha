@@ -7,7 +7,6 @@ BEGIN_EXTERN_C
 /* ======================================================================== */
 /* ClassDef API (defClass & constClass) */
 
-<<<<<<< HEAD
 /* ------------------------------------------------------------------------ */
 /* class MPI */
 
@@ -22,8 +21,6 @@ DEFAPI(void) constMPI(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 }
 
 /* ------------------------------------------------------------------------ */
-=======
-/* ------------------------------------------------------------------------ */
 /* class MPI */
 
 DEFAPI(void) defMPI(CTX ctx, kclass_t cid, kclassdef_t *cdef)
@@ -37,7 +34,6 @@ DEFAPI(void) constMPI(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 }
 
 /* ------------------------------------------------------------------------ */
->>>>>>> upstream/master
 /* class MPIComm */
 
 static void knh_MPIComm_init(CTX ctx, kRawPtr *o)
@@ -70,13 +66,10 @@ DEFAPI(void) defMPIComm(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 	cdef->free = knh_MPIComm_free;
 }
 
-<<<<<<< HEAD
 #ifdef KNH_MPI_VERTIKS
 kMPITaskContext *kMPI_global_tctx;
 #endif
 
-=======
->>>>>>> upstream/master
 DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 {
 	int init = 0;
@@ -86,7 +79,6 @@ DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 		MPIC_INITV(world, MPI_COMM_WORLD);
 		knh_addClassConst(ctx, cid, new_String(ctx, "WORLD"), (kObject*)world);
 		knh_setClassDefaultValue(ctx, cid, world, NULL);
-<<<<<<< HEAD
 #ifdef KNH_MPI_VERTIKS
 		{
 			MPIC(tworld, new_O(MPIComm, cid));
@@ -95,8 +87,6 @@ DEFAPI(void) constMPIComm(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 			MPICTX_TWORLD(kMPI_global_tctx) = tworld; // only used by mpikonoha
 		}
 #endif
-=======
->>>>>>> upstream/master
 	}
 }
 
@@ -222,17 +212,9 @@ DEFAPI(void) constMPIRequest(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 	/* dummy */;
 }
 
-<<<<<<< HEAD
-
 /* ======================================================================== */
 /* PackageDef API (init) */
 
-=======
-
-/* ======================================================================== */
-/* PackageDef API (init) */
-
->>>>>>> upstream/master
 static void knh_MPI_errhandler(MPI_Comm *comm, int *err, ...)
 {
 	int ecode = *err;
