@@ -11,10 +11,13 @@ include "lib:gluelink";
 
 @Native @Static void   MPI.preventLog();  // for ac
 @Native @Static Float  MPI.getWtime();    // for MPI_Wtime
+<<<<<<< HEAD
 @Native @Static void   MPI.addTaskScript(MPIComm comm, String script);
 @Native @Static void   MPI.setTaskWorld(MPIComm comm);
 @Native @Static void   MPI.setTaskOut(OutputStream out);
 @Native @Static void   MPI.setTaskErr(OutputStream err);
+=======
+>>>>>>> upstream/master
 
 /* ------------------------------------------------------------------------ */
 /* Array Extra API */
@@ -91,6 +94,7 @@ using konoha.json.*; // import Bytes.readJson, Bytes.writeJson
 @Native MPIData : (Object o);
 @Native Tvar MPIData.decode(Class _);
 
+<<<<<<< HEAD
 /* ======================================================================== */
 /* Vertiks */
 
@@ -385,4 +389,6 @@ class TaskScript {
     }
 }
 
+=======
+>>>>>>> upstream/master
 // EOF
