@@ -196,12 +196,11 @@ const char* kMPI_argv0 = NULL;
 
 static void opt_vertiks(CTX ctx, int mode, const char *optstr)
 {
-	int kMPI_initialized = 0;
-	MPI_Initialized(&kMPI_initialized);
-	if(kMPI_initialized) {
-		int kMPI_worldRank = -1;
-		MPI_Comm_rank(MPI_COMM_WORLD, &kMPI_worldRank);
-		if (kMPI_worldRank >= 0) {
+	int initialized, rank;
+	MPI_Initialized(&initialized);
+	if(initialized) {
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		if (rank >= 0) {
 			isMPIMode = 1;
 		} else {
 			KNH_NOTE("only one process is running: option(--vertiks) ignored");
