@@ -2,15 +2,11 @@ using konoha.mpi.*;
 using lib.blas.*;
 using konoha.math.*;
 
-N = (|$script.argv| > 0) ? (int)$script.argv[0] : 256;
+N =     480;
 DEBUG = 1;
-EPS =   1.0e-18
+EPS =   1.0e-18;
 
-/* Please define the matrices in here */
-a = new double[N,N];
-b = new double[N,N];
-c = new double[N,N];
-
+MPIComm world;
 int     myid, numprocs;
 
 void myMatMat(double[] c, double[] a, double[] b, int n);
@@ -20,13 +16,16 @@ void main(String[] args) {
     double  t0, t1, t2;
     double  dc_inv, d_mflops;
 
-    int     ierr;
     int     i, j;
-    int     iflag;
+    int     iflag; int[] iflag_t = [1];
 
     world = MPIComm.WORLD;
     myid = world.getRank();
     numprocs = world.getSize();
+
+    a = new double[N,N];
+    b = new double[N,N];
+    c = new double[N,N];
 
     /* matrix generation --------------------------*/
     if (DEBUG == 1) {
@@ -51,13 +50,13 @@ void main(String[] args) {
     world.barrier();
     t1 = MPI.getWtime();
 
-    MyMatMat(c, a, b, N);
+    myMatMat(c, a, b, N);
 
     world.barrier();
     t2 = MPI.getWtime();
     t0 =  t2 - t1;
     t_w = new float[1];
-    world.reduce((MPIData)[t0], (MPIData)t_w, 1, MPIOp.MAX, 0);
+    world.reduce((MPIData)t0, (MPIData)t_w, 1, MPIOp.MAX, 0);
     /* End of mat-vec routine --------------------------- */
 
     if (myid == 0) {
@@ -83,9 +82,9 @@ void main(String[] args) {
             }
         }
         /* ------------------------------------- */
-
+        world.reduce((MPIData)iflag, (MPIData)iflag_t, 1, MPIOp.SUM, 0);
         if (myid == 0) {
-            if (iflag == 0) OUT.println(" OK! ");
+            if (iflag_t[0] == 0) OUT.println(" OK! ");
         }
 
     }
@@ -97,10 +96,10 @@ void myMatMat(double[] c, double[] a, double[] b, int n)
     /*
       Blas.dgemm: Matrix-Matrix-Mul
         C = beta * C + alpha * (A * B)
-            a, b, c: Matrix (2-dim array vector)
+            A, B, C: Matrix (2-dim array vector)
             alpha, beta: Scalar
      */
     Blas.dgemm(Blas.ORDER_COLMAJOR, Blas.TRANSPOSE_NOTRANS, Blas.TRANSPOSE_NOTRANS,
-               n /* a.rows */, n /* b.rows */, n /* c.rows */,
-               1.0 /* alpha */, a, n /* a.cols */, b, n /* b.cols */, 0.0 /* beta */, c, n /* c.cols*/);
+               n /* A.rows */, n /* B.rows */, n /* C.rows */,
+               1.0 /* alpha */, a, n /* A.cols */, b, n /* B.cols */, 0.0 /* beta */, c, n /* C.cols*/);
 }

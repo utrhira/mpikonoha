@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#include <cblas.h>
 
 #define  N      480
 #define  DEBUG  1
@@ -97,12 +98,13 @@ int main(int argc, char* argv[])
 
 void myMatMat(double C[N][N], double A[N][N], double B[N][N], int n)
 {
-	int  i, j, k;
-	for(i=0; i<n; i++) {
-		for(j=0; j<n; j++) {
-			for(k=0; k<n; k++) {
-				C[i][j] += A[i][k] * B[k][j];
-			}
-		}
-	}
+	/*
+	  cblas.dgemm: Matrix-Matrix-Mul
+	     C = beta * C + alpha * (A * B)
+	         A, B, C: Matrix (2-dim array vector)
+	         alpha, beta: Scalar
+    */
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+				n /* A.rows */, n /* B.rows */, n /* C.rows */,
+				1.0 /* alpha */, A, n /* A.cols */, B, n /* B.cols */, 0.0 /* beta */, C, n /* C.cols */);
 }

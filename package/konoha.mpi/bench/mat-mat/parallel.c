@@ -1,33 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
 #include <mpi.h>
 
-#ifndef  N
-#define  N      256
-#endif
-#define  DEBUG  0
+#define  N      480
+#define  DEBUG  1
 #define  EPS    1.0e-18
 
 int     myid, numprocs;
 
-void MyMatMat(double [N/numprocs][N], double [N/numprocs][N], double [N][N/numprocs], int);
+void myMatMat(double [N/numprocs][N], double [N/numprocs][N], double [N][N/numprocs], int);
 
 int main(int argc, char* argv[])
 {
 	double  t0, t1, t2, t_w;
 	double  dc_inv, d_mflops;
 
-	int     ierr;
 	int     i, j;
 	int     iflag, iflag_t;
-	int     j_start, j_end;
 	int     np;
 
-	ierr = MPI_Init(&argc, &argv);
-	ierr = MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-	ierr = MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 	np   = N/numprocs;
 
 	double   A[N/numprocs][N];
@@ -56,15 +51,15 @@ int main(int argc, char* argv[])
 	} /* end of matrix generation --------------------------*/
 
 	/* Start of mat-vec routine ----------------------------*/
-	ierr = MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 	t1 = MPI_Wtime();
 
-	MyMatMat(C, A, B, N);
+	myMatMat(C, A, B, N);
 
-	ierr = MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 	t2 = MPI_Wtime();
 	t0 =  t2 - t1;
-	ierr = MPI_Reduce(&t0, &t_w, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&t0, &t_w, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	/* End of mat-vec routine --------------------------- */
 
 	if (myid == 0) {
@@ -84,8 +79,6 @@ int main(int argc, char* argv[])
 			for(i=0; i<N; i++) {
 				if (fabs(C[j][i] - (double)N) > EPS) {
 					printf(" Error! in ( %d , %d ) th argument. \n",j, i);
-					if (myid == 0)
-						printf(" >>> myid: %d, jst: %d, (%f) != %d\n", myid, j_start, C[j][i], N);
 					iflag = 1;
 					break;
 				}
@@ -100,12 +93,11 @@ int main(int argc, char* argv[])
 
 	}
 
-	ierr = MPI_Finalize();
-
+	MPI_Finalize();
 	return 0;
 }
 
-void MyMatMat(double C[N/numprocs][N], double A[N/numprocs][N], double B[N][N/numprocs], int n)
+void myMatMat(double C[N/numprocs][N], double A[N/numprocs][N], double B[N][N/numprocs], int n)
 {
 	int  i, j, k, l;
 	int np = n / numprocs;
