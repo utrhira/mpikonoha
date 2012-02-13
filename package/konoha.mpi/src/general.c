@@ -23,7 +23,7 @@ KMETHOD MPI_getWtime(CTX ctx, ksfp_t *sfp _RIX)
 
 extern const char* kMPI_argv0;
 static kMPITaskContext _tctx;
-kMPITaskContext *kMPI_global_tctx = &_tctx;
+static kMPITaskContext *kMPI_global_tctx = &_tctx;
 
 static int bytes_isempty(kbytes_t t)
 {
