@@ -82,7 +82,7 @@ include "lib:gluelink";
 /* Functions depends on another package */
 
 using konoha.io.*; // import Bytes.readMsgPack, Bytes.writeMsgPack
-using konoha.json.*; // import Bytes.readJson, Bytes.writeJson
+//using konoha.json.*; // import Bytes.readJson, Bytes.writeJson
 
 @Native MPIData : (Object o);
 @Native Tvar MPIData.decode(Class _);

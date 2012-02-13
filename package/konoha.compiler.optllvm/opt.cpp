@@ -138,7 +138,7 @@ static void emit(Function &F, Module *m, BasicBlock *BB, int espshift) {
     FunctionType *fnTy = FunctionType::get(VoidTy, argsType, false);
     Value *Args[] = { vctx, C };
 
-//#define USE_FUNC_AS_LONGNUM
+#define USE_FUNC_AS_LONGNUM
 #ifdef USE_FUNC_AS_LONGNUM
 #if SIZEOF_VOIDP == 8
     Type *LongTy = Type::getInt64Ty(Context);

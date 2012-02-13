@@ -22,8 +22,13 @@ add_library(${PACKAGE_NAME} SHARED ${PACKAGE_SOURCE_CODE})
 set_target_properties(${PACKAGE_NAME} PROPERTIES PREFIX "")
 target_link_libraries(${PACKAGE_NAME} konoha ${PACKAGE_EXTRA_LIBRARY})
 
+find_package(MPI REQUIRED)                                                                                                  
+set(CMAKE_COMPILE_FLAGS ${CMAKE_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})                                                        
+set(CMAKE_LINK_FLAGS    ${CMAKE_LINK_FLAGS}    ${MPI_LINK_FLAGS})    
+include_directories(${MPI_INCLUDE_PATH})  
+
 add_executable(konohac "konohac.c")
-target_link_libraries(konohac konoha)
+target_link_libraries(konohac konoha ${MPI_LIBRARIES})
 install(TARGETS konohac RUNTIME DESTINATION bin)
 
 install(TARGETS ${PACKAGE_NAME} DESTINATION ${KONOHA_PACKAGE_DIR})

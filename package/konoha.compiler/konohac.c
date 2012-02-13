@@ -1,4 +1,5 @@
 #define K_INTERNAL 1
+#include <mpi.h>
 #include <konoha1.h>
 #include <konoha1/inlinelibs.h>
 #include <konoha1/konohalang.h>
@@ -160,6 +161,7 @@ static int knh_runMain(CTX ctx, int argc, const char **argv)
 int main(int argc, const char *argv[])
 {
     int i, argc_ = argc;
+    MPI_Init(&argc, (char***)&argv);
     const char *argv_[argc_];
     const char *fname = parse_option(&argc_, argv, argv_);
     if (fname == NULL) {
@@ -201,6 +203,7 @@ int main(int argc, const char *argv[])
         knh_runMain(ctx, argc_, argv_);
     }
     konoha_close(konoha);
+    MPI_Finalized();
     return 0;
 }
 
