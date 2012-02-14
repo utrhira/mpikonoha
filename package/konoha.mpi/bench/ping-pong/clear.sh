@@ -1,12 +1,12 @@
 #!/bin/sh
 
+now=`date "+%m%d_%H%M%S"`
+tmp=${now}
+mkdir $tmp
 for log in `find . -name "pp_*"`; do
     if [ `wc -l $log` = 0 ]; then
         rm $log
+    elif
+        mv $log ${tmp}/.
     fi
 done
-
-now=`date "+%m%d_%H%M%S"`
-tmp=pp_${now}
-mkdir $tmp
-mv mm_* ${tmp}/.
