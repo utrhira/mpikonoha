@@ -14,7 +14,6 @@ int main(int argc, char* argv[])
 	double  dc_inv, d_mflops;
 
 	int     i, j;
-	int     iflag, iflag_t;
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
@@ -48,13 +47,9 @@ int main(int argc, char* argv[])
 	/* End of mat-vec routine --------------------------- */
 
 	if (myid == 0) {
-
-		printf("N  = %d \n",N);
-		printf("Mat-Mat time  = %lf [sec.] \n",t_w);
-
 		d_mflops = 2.0*(double)N*(double)N*(double)N/t_w;
 		d_mflops = d_mflops * 1.0e-6;
-		printf(" %lf [MFLOPS] \n", d_mflops);
+		printf("%d [dim.], %lf [sec.], %lf [Mflops]\n",N, t_w, d_mflops);
 	}
 
 	MPI_Finalize();

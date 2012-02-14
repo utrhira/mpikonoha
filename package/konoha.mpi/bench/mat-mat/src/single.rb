@@ -32,12 +32,9 @@ def main
     # End of mat-vec routine ---------------------------
 
     if $myid == 0 then
-        puts "N  = %d" % N
-        puts "Mat-Mat time  = "+"%f" % t_w+" [sec.]"
-
         d_mflops = 2.0 * N * N * N / t_w
         d_mflops = d_mflops * 1.0e-6
-        puts " "+"%f" % d_mflops+" [MFLOPS]"
+        puts "%d" % N + " [dim.], " + "%f" % t_w + " [sec.], " + "%f" % d_mflops + " [Mflops]"
     end
 end
 

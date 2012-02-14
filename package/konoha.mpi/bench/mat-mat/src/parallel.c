@@ -20,9 +20,9 @@ int main(int argc, char* argv[])
 	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 	np   = N/numprocs;
 
-	double   A[N/numprocs][N];
-	double   B[N][N/numprocs];
-	double   C[N/numprocs][N];
+	double   A[np][N];
+	double   B[N][np];
+	double   C[np][N];
 
 	/* matrix generation --------------------------*/
 	srand(1);
@@ -48,12 +48,9 @@ int main(int argc, char* argv[])
 	/* End of mat-vec routine --------------------------- */
 
 	if (myid == 0) {
-		printf("N  = %d \n",N);
-		printf("Mat-Mat time  = %lf [sec.] \n",t_w);
-
 		d_mflops = 2.0*(double)N*(double)N*(double)N/t_w;
 		d_mflops = d_mflops * 1.0e-6;
-		printf(" %lf [MFLOPS] \n", d_mflops);
+		printf("%d [dim.], %lf [sec.], %lf [Mflops]\n",N, t_w, d_mflops);
 	}
 
 	MPI_Finalize();
@@ -67,7 +64,7 @@ void myMatMat(double C[N/numprocs][N], double A[N/numprocs][N], double B[N][N/nu
 	MPI_Status istat;
 	int i_start, i_end;
 	int j_start;
-	double B_T[N][N/numprocs];
+	double B_T[N][np];
 
 	dest = (myid == 0) ? (numprocs-1) : (myid-1);
 	src  = (myid == numprocs-1) ?   0 : (myid+1);

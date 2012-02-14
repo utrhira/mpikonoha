@@ -11,7 +11,6 @@ fi
 
 single=./single.sh
 parallel=./parallel.sh
-target=${single}
 for numpe in 1 2 4 6 8 12
 do
     pe_name=openmpi${numpe}
@@ -19,8 +18,12 @@ do
     do
         numprocs=`expr ${numpe} \* ${numnodes}`
         job_name=mm_${numpe}x${numnodes}
-        echo qsub -pe ${pe_name} ${numprocs} -N ${job_name} ${target}
-        qsub -pe ${pe_name} ${numprocs} -N ${job_name} ${target}
-        target=${parallel}
+        if [ ${numprocs} = 1 ]; then
+            qsub -pe ${pe_name} ${numprocs} -N ${job_name} ${single}
+        elif [ `expr ${numprocs} \% 2` = 0 ]; then
+            qsub -pe ${pe_name} ${numprocs} -N ${job_name} ${parallel}
+        fi
     done
 done
+
+rm ./src/parallel ./src/single

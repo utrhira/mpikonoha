@@ -3,30 +3,20 @@ using lib.blas.*;
 
 N =     480;
 
-MPIComm world;
-int     myid, numprocs;
+world = MPIComm.WORLD;
+myid = world.getRank();
+numprocs = world.getSize();
 
 void myMatMat(double[] c, double[] a, double[] b, int n);
 
 void main(String[] args) {
-
-    double  t0, t1, t2;
-    double  d_mflops;
-
-    int     i, j;
-    int     iflag; int[] iflag_t = [1];
-
-    world = MPIComm.WORLD;
-    myid = world.getRank();
-    numprocs = world.getSize();
-
     a = new double[N,N];
     b = new double[N,N];
     c = new double[N,N];
 
     /* matrix generation --------------------------*/
-    for(j=0; j<N; j++) {
-        for(i=0; i<N; i++) {
+    for(int j=0; j<N; j++) {
+        for(int i=0; i<N; i++) {
             a[j,i] = Float.random();
             b[j,i] = Float.random();
             c[j,i] = 0.0;
@@ -47,13 +37,9 @@ void main(String[] args) {
     /* End of mat-vec routine --------------------------- */
 
     if (myid == 0) {
-
-        OUT.println("N  = "+N);
-        OUT.println("Mat-Mat time  = "+"%f"(t_w[0])+" [sec.]");
-
         d_mflops = 2.0 * (double)N * (double)N * (double)N / t_w[0];
         d_mflops = d_mflops * 1.0e-6;
-        OUT.println(" "+"%f"(d_mflops)+" [MFLOPS]");
+        OUT.println("%d"(N)+" [dim.], "+"%f"(t_w[0])+" [sec.], "+"%f"(d_mflops)+" [Mflops]");
     }
 }
 

@@ -35,11 +35,9 @@ def main():
     # End of mat-vec routine ---------------------------
 
     if myid == 0:
-        print "N  =",N
-        print "Mat-Mat time  =","%f" % t_w,"[sec.]"
         d_mflops = 2.0 * N * N * N / t_w
         d_mflops = d_mflops * 1.0e-6
-        print "","%f" % d_mflops,"[MFLOPS]"
+        print N,"[dim.],","%f" % t_w,"[sec.],","%f" % d_mflops,"[Mflops]"
 
 
 def myMatMat(c, a, b, n):

@@ -36,12 +36,9 @@ void main(String[] args) {
     /* End of mat-vec routine --------------------------- */
 
     if (myid == 0) {
-        OUT.println("N  = "+N);
-        OUT.println("Mat-Mat time  = "+"%f"(t_w[0])+" [sec.]");
-
         d_mflops = 2.0 * (double)N * (double)N * (double)N / t_w[0];
         d_mflops = d_mflops * 1.0e-6;
-        OUT.println(" "+"%f"(d_mflops)+" [MFLOPS]");
+        OUT.println("%d"(N)+" [dim.], "+"%f"(t_w[0])+" [sec.], "+"%f"(d_mflops)+" [Mflops]");
     }
 }
 
