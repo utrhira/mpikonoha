@@ -3,7 +3,7 @@
 #$ -S /bin/sh
 #$ -cwd
 #$ -V
-#$ -pe opempi1 2
+#$ -pe openmpi1 2
 
 echo "---- c ------------------------------"
 mpirun -np $NSLOTS ./src/float
