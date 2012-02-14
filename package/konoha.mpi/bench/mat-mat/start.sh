@@ -1,13 +1,7 @@
 #!/bin/sh
 
-if [ ! -e ./src/parallel ]; then
-    echo "--- build src/parallel"
-    mpicc -O3 ./src/parallel.c -o ./src/parallel
-fi
-if [ ! -e ./src/single ]; then
-    echo "--- build src/single"
-    mpicc -O3 ./src/single.c -o ./src/single
-fi
+mpicc -O3 ./src/parallel.c -o ./src/parallel
+mpicc -O3 ./src/single.c -o ./src/single
 
 single=./single.sh
 parallel=./parallel.sh
@@ -25,5 +19,3 @@ do
         fi
     done
 done
-
-rm ./src/parallel ./src/single
