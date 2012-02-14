@@ -1,4 +1,4 @@
-N =     96
+N =     480
 
 $world = MPI::Comm::WORLD
 $myid = $world.rank()

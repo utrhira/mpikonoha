@@ -1,6 +1,6 @@
 using konoha.mpi.*;
 
-N =     96;
+N =     480;
 
 world = MPIComm.WORLD;
 myid = world.getRank();

@@ -3,7 +3,7 @@
 #include <mpi.h>
 #include <cblas.h>
 
-#define  N      96
+#define  N      480
 
 int     myid, numprocs;
 

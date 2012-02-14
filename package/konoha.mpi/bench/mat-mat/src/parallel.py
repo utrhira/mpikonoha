@@ -1,7 +1,7 @@
 import random, numpy
 from mpi4py import MPI
 
-N =     96
+N =     480
 
 world = MPI.COMM_WORLD
 myid = world.Get_rank()

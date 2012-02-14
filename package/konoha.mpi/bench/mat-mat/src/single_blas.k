@@ -1,7 +1,7 @@
 using konoha.mpi.*;
 using lib.blas.*;
 
-N =     96;
+N =     480;
 
 MPIComm world;
 int     myid, numprocs;
