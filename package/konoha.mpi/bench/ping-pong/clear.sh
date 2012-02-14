@@ -6,7 +6,7 @@ mkdir $tmp
 for log in `find . -name "pp_*"`; do
     if [ `wc -l $log` = 0 ]; then
         rm $log
-    elif
+    else
         mv $log ${tmp}/.
     fi
 done
