@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ `qstat` ]; then
+    echo "--- tasks not finished ----"
+    exit
+fi
+
 now=`date "+%m%d_%H%M%S"`
 tmp=${now}
 mkdir $tmp
